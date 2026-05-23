@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { dataClient } from '@/lib/dataClient'
 import { computeReadinessScore } from '@/lib/scoring'
 import { sm2Update, newCard } from '@/lib/spacedRepetition'
-import type { Session, SessionsData, ProgressData, WeakAreasData, SpacedRepData, ScoreHistoryData, QAItem } from '@/types'
+import type { Session, SessionIndexData, ProgressData, WeakAreasData, SpacedRepData, ScoreHistoryData, QAItem } from '@/types'
 import { slugify } from '@/lib/utils'
 
 interface AppState {
@@ -64,6 +64,18 @@ function syncWeakAreas(sessions: Session[]): WeakAreasData {
   return { lastUpdated: new Date().toISOString(), weakAreas }
 }
 
+function buildIndex(sessions: Session[]): SessionIndexData {
+  return {
+    topics: sessions.map(s => ({
+      topicSlug: s.topicSlug,
+      topic: s.topic,
+      updatedAt: s.updatedAt,
+      readinessScore: s.readinessScore,
+      sessionCount: s.sessionCount,
+    })),
+  }
+}
+
 export const useStore = create<AppState>((set, get) => ({
   sessions: [],
   progress: { lastUpdated: '', totalSessionsCompleted: 0, topics: {} },
@@ -73,14 +85,17 @@ export const useStore = create<AppState>((set, get) => ({
   loaded: false,
 
   load: async () => {
-    const [sessionsData, progress, weakAreas, spacedRep, scoreHistory] = await Promise.all([
-      dataClient.sessions.read(),
+    const [index, progress, weakAreas, spacedRep, scoreHistory] = await Promise.all([
+      dataClient.sessionIndex.read(),
       dataClient.progress.read(),
       dataClient.weakAreas.read(),
       dataClient.spacedRep.read(),
       dataClient.scoreHistory.read(),
     ])
-    set({ sessions: sessionsData.sessions, progress, weakAreas, spacedRep, scoreHistory, loaded: true })
+    const sessions = (await Promise.all(
+      index.topics.map(t => dataClient.session.read(t.topicSlug))
+    )).filter((s): s is Session => s !== null)
+    set({ sessions, progress, weakAreas, spacedRep, scoreHistory, loaded: true })
   },
 
   createSession: async (topic: string) => {
@@ -103,23 +118,35 @@ export const useStore = create<AppState>((set, get) => ({
       sessionCount: 1,
     }
     const updated = [...sessions, session]
-    const data: SessionsData = { sessions: updated }
+    const index = buildIndex(updated)
     const progress = syncProgress(updated, get().progress)
     const weakAreas = syncWeakAreas(updated)
     set({ sessions: updated, progress, weakAreas })
-    await Promise.all([dataClient.sessions.write(data), dataClient.progress.write(progress), dataClient.weakAreas.write(weakAreas)])
+    await Promise.all([
+      dataClient.session.write(topicSlug, session),
+      dataClient.sessionIndex.write(index),
+      dataClient.progress.write(progress),
+      dataClient.weakAreas.write(weakAreas),
+    ])
     return session
   },
 
   updateSession: async (session: Session) => {
     const { sessions } = get()
     const score = computeReadinessScore(session)
-    const updated = sessions.map(s => s.topicSlug === session.topicSlug ? { ...session, readinessScore: score, updatedAt: new Date().toISOString() } : s)
+    const updated = sessions.map(s =>
+      s.topicSlug === session.topicSlug
+        ? { ...session, readinessScore: score, updatedAt: new Date().toISOString() }
+        : s
+    )
+    const updatedSession = updated.find(s => s.topicSlug === session.topicSlug)!
+    const index = buildIndex(updated)
     const progress = syncProgress(updated, get().progress)
     const weakAreas = syncWeakAreas(updated)
     set({ sessions: updated, progress, weakAreas })
     await Promise.all([
-      dataClient.sessions.write({ sessions: updated }),
+      dataClient.session.write(session.topicSlug, updatedSession),
+      dataClient.sessionIndex.write(index),
       dataClient.progress.write(progress),
       dataClient.weakAreas.write(weakAreas),
     ])
@@ -150,7 +177,6 @@ export const useStore = create<AppState>((set, get) => ({
         lastReviewed: now,
       }
     })
-    // SM-2 update
     const quality = correct ? 4 : 1
     const cards = spacedRep.cards.map(c => {
       if (c.questionId !== questionId) return c

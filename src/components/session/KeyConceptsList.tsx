@@ -9,6 +9,7 @@ interface Props {
 
 export default function KeyConceptsList({ session }: Props) {
   const [newConcept, setNewConcept] = useState('')
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null)
   const updateKeyConcepts = useStore(s => s.updateKeyConcepts)
 
   const add = () => {
@@ -18,8 +19,13 @@ export default function KeyConceptsList({ session }: Props) {
     setNewConcept('')
   }
 
-  const remove = (concept: string) => {
-    updateKeyConcepts(session.topicSlug, session.keyConcepts.filter(c => c !== concept))
+  const confirmDelete = (concept: string) => {
+    if (pendingDelete === concept) {
+      updateKeyConcepts(session.topicSlug, session.keyConcepts.filter(c => c !== concept))
+      setPendingDelete(null)
+    } else {
+      setPendingDelete(concept)
+    }
   }
 
   return (
@@ -31,15 +37,27 @@ export default function KeyConceptsList({ session }: Props) {
       </div>
 
       <div className="flex flex-wrap gap-2 mb-3">
-        {session.keyConcepts.map(c => (
+        {session.keyConcepts.map(c => {
+          const confirming = pendingDelete === c
+          return (
           <span key={c}
-            className="flex items-center gap-1 text-xs bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-2.5 py-1 rounded-full">
-            {c}
-            <button onClick={() => remove(c)} className="text-amber-400 hover:text-red-500 ml-0.5 transition-colors">
+            className={`flex items-center gap-1 text-xs border px-2.5 py-1 rounded-full transition-colors ${
+              confirming
+                ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-300 dark:border-red-700'
+                : 'bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+            }`}>
+            {confirming ? <span className="font-medium">Delete "{c}"?</span> : c}
+            <button
+              onClick={() => confirmDelete(c)}
+              onBlur={() => setPendingDelete(null)}
+              className={`ml-0.5 transition-colors ${confirming ? 'text-red-500 font-bold' : 'text-amber-400 hover:text-red-500'}`}
+              title={confirming ? 'Click again to confirm' : 'Remove concept'}
+            >
               <X size={11} />
             </button>
           </span>
-        ))}
+          )
+        })}
         {session.keyConcepts.length === 0 && (
           <span className="text-xs text-slate-400 dark:text-slate-500 italic">Add key concepts to remember</span>
         )}

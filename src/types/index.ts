@@ -77,6 +77,18 @@ export interface SessionsData {
   sessions: Session[]
 }
 
+export interface SessionIndexEntry {
+  topicSlug: string
+  topic: string
+  updatedAt: string
+  readinessScore: number
+  sessionCount: number
+}
+
+export interface SessionIndexData {
+  topics: SessionIndexEntry[]
+}
+
 export interface ScoreEntry {
   topic: string
   date: string

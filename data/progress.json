@@ -1,5 +1,28 @@
 {
-  "lastUpdated": "",
-  "totalSessionsCompleted": 0,
-  "topics": {}
+  "lastUpdated": "2026-05-23T07:42:17.192Z",
+  "totalSessionsCompleted": 2,
+  "topics": {
+    "sap-btp": {
+      "topicSlug": "sap-btp",
+      "displayName": "SAP BTP",
+      "readinessScore": 10,
+      "totalQuestions": 10,
+      "correctOnFirstTry": 0,
+      "sessionCount": 1,
+      "firstStudied": "2026-05-23T00:00:00.000Z",
+      "lastStudied": "2026-05-23T00:00:00.000Z",
+      "status": "in-progress"
+    },
+    "cache": {
+      "topicSlug": "cache",
+      "displayName": "Cache",
+      "readinessScore": 0,
+      "totalQuestions": 0,
+      "correctOnFirstTry": 0,
+      "sessionCount": 1,
+      "firstStudied": "2026-05-23T07:42:17.192Z",
+      "lastStudied": "2026-05-23T07:42:17.192Z",
+      "status": "new"
+    }
+  }
 }

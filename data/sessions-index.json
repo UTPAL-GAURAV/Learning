@@ -1,0 +1,18 @@
+{
+  "topics": [
+    {
+      "topicSlug": "sap-btp",
+      "topic": "SAP BTP",
+      "updatedAt": "2026-05-23T00:00:00.000Z",
+      "readinessScore": 0,
+      "sessionCount": 1
+    },
+    {
+      "topicSlug": "cache",
+      "topic": "Cache",
+      "updatedAt": "2026-05-23T07:42:17.192Z",
+      "readinessScore": 0,
+      "sessionCount": 1
+    }
+  ]
+}

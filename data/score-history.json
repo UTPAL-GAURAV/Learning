@@ -1,3 +1,10 @@
 {
-  "history": []
+  "history": [
+    {
+      "topic": "sap-btp",
+      "date": "2026-05-23",
+      "score": 72,
+      "note": "Strong instincts throughout. Gaps: Global Account scope, CF Space role names, entitlement plan vs region check, xs-security.json deployment flow. Good cross-questions on JWT, bindings, billing."
+    }
+  ]
 }

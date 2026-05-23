@@ -1,4 +1,4 @@
-import type { SessionsData, ProgressData, WeakAreasData, SpacedRepData, ScoreHistoryData } from '@/types'
+import type { SessionIndexData, Session, ProgressData, WeakAreasData, SpacedRepData, ScoreHistoryData } from '@/types'
 
 const isDev = import.meta.env.DEV
 
@@ -22,9 +22,13 @@ async function writeJSON(filename: string, data: unknown): Promise<void> {
 }
 
 export const dataClient = {
-  sessions: {
-    read: () => readJSON<SessionsData>('sessions.json', { sessions: [] }),
-    write: (data: SessionsData) => writeJSON('sessions.json', data),
+  sessionIndex: {
+    read: () => readJSON<SessionIndexData>('sessions-index.json', { topics: [] }),
+    write: (data: SessionIndexData) => writeJSON('sessions-index.json', data),
+  },
+  session: {
+    read: (slug: string) => readJSON<Session | null>(`sessions/${slug}.json`, null),
+    write: (slug: string, data: Session) => writeJSON(`sessions/${slug}.json`, data),
   },
   progress: {
     read: () => readJSON<ProgressData>('progress.json', {
