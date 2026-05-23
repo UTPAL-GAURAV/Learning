@@ -4,20 +4,37 @@
   "topicSlug": "cache",
   "createdAt": "2026-05-23T07:42:17.192Z",
   "updatedAt": "2026-05-23T00:00:00.000Z",
-  "notes": "## Eviction Policies\n- LRU: evict least recently used. O(1) via doubly linked list + hashmap. Best for recency-based access.\n- LFU: evict least frequently used. More accurate for skewed patterns but expensive to track. Causes frequency pollution — stale items with high historical counts block new items.\n- FIFO: evict oldest inserted. Simple, rarely used in web caches.\n- Random: zero overhead, surprisingly decent.\n- **Frequency pollution**: LFU accumulates counts from past traffic spikes. Stale items can't be displaced by new ones. Use LRU + TTL instead.\n- TTL vs Eviction: TTL = time-based expiry, fires regardless of memory pressure. Eviction = fires only when cache is full. Two independent mechanisms.\n- Real combo: LRU policy + TTL per key (e.g. Redis: maxmemory-policy allkeys-lru + EXPIRE key 7200).\n- TinyLFU (Caffeine/Java): probation zone (new, FIFO-ish) + protected zone (frequent, LRU). Items earn their way in.\n\n## Write Strategies\n- Write-through: write to cache + DB synchronously. Cache always warm. No write perf gain (DB still hit). Good when written data is frequently re-read.\n- Write-back: write to cache only, flush to DB async. Fast writes. Risk: data loss if cache crashes before flush. Never use for critical data.\n- Write-around: write to DB only, skip cache. Cache populated only on next read miss. Good for write-heavy data rarely re-read (ledger entries, logs).\n- **Why 'no write perf gain' is called out for write-through only**: write-through looks like it should be faster (you're writing to cache) but it isn't — DB write is still sync. The comparison is vs write-back which gives actual write speed.\n- Banking ledger: write-around (DB durability required, cache not polluted). Dashboard: cache-aside with TTL matching staleness tolerance.\n\n## Cache Patterns (Read/Write)\n- Cache-aside (lazy loading): app checks cache → miss → app fetches DB → app writes cache. App owns all cache logic. Most common with Redis.\n- Read-through: app asks cache → miss → cache fetches DB. Cache layer owns miss logic. Requires CacheLoader abstraction (Spring Cache, Caffeine). Redis doesn't do this natively.\n- Write-through (pattern): app writes to cache → cache writes to DB. Pairs with read-through for full 'cache as primary data layer'.\n- Refresh-ahead: cache proactively refreshes before expiry based on predicted access. Avoids misses entirely. Good for predictable access patterns (leaderboards, trending data).\n- **Why not read-through for fast-changing schemas**: fetch logic lives in cache layer config — harder to update when data model changes every sprint. Cache-aside keeps fetch logic in app code.\n- **Why not 'Redis does read-through'**: Redis is a dumb key-value store. It has no DB awareness. Read-through is implemented at app layer via library abstraction.\n- Thundering herd (cache-aside risk): on cold start or TTL expiry, many requests miss simultaneously and hammer DB. Mitigations: mutex lock on miss, probabilistic early expiry, refresh-ahead.",
+  "notes": "## Eviction Policies\n\n| Policy | Mechanism | Evicts | Cost | Best for |\n|---|---|---|---|---|\n| **LRU** | Doubly linked list + hashmap | Least recently used | O(1) | Recency-based access |\n| **LFU** | Frequency counter per key | Least frequently used | High (count tracking) | Skewed access patterns |\n| **FIFO** | Queue | Oldest inserted | Low | Rarely used in web caches |\n| **Random** | None | Random key | Zero | Low-overhead fallback |\n\n**Frequency pollution**: LFU accumulates counts from past traffic spikes. Stale items with high historical counts block new items \u2014 they can't be displaced by new ones. Use LRU + TTL instead.\n\n**TTL vs Eviction**: Two independent mechanisms. TTL = time-based expiry, fires regardless of memory pressure. Eviction = fires only when cache is full.\n\nReal combo: LRU policy + TTL per key. Redis config: `maxmemory-policy allkeys-lru` + `EXPIRE key 7200`.\n\n**TinyLFU (Caffeine/Java)**: probation zone (new items, FIFO-ish) \u2192 promoted to protected zone (frequent items, LRU). Items earn their way in.\n\n---\n\n## Write Strategies\n\n| Strategy | Write path | DB hit on write | Write perf gain | Risk | Use when |\n|---|---|---|---|---|---|\n| **Write-through** | Cache + DB, synchronous | Yes | No | None | Written data is frequently re-read |\n| **Write-back** | Cache only, async DB flush | Deferred | Yes | Data loss if cache crashes before flush | High write throughput, non-critical data |\n| **Write-around** | DB only, skip cache | Yes | No | Cold reads until first miss | Write-heavy data rarely re-read (logs, ledger) |\n\n**Why \"no write perf gain\" is called out for write-through only**: write-through writes to cache as part of the write path \u2014 you'd expect a speed gain, but don't get one because the DB write is still synchronous. The comparison is against write-back, which gives actual write speed via async flush.\n\n- Banking ledger \u2192 write-around (DB durability required, cache not polluted)\n- Dashboard \u2192 cache-aside with TTL matching staleness tolerance\n\n---\n\n## Cache Patterns (Read/Write)\n\n| Pattern | Who owns miss logic | Redis native? | Best for |\n|---|---|---|---|\n| **Cache-aside** (lazy loading) | App | Yes | Most use cases; fast-changing schemas |\n| **Read-through** | Cache layer (CacheLoader) | No | Stable schemas; cache as primary data layer |\n| **Write-through** (pattern) | Cache layer | No | Pairs with read-through for full cache-as-DB-layer |\n| **Refresh-ahead** | Cache layer (proactive) | No | Predictable access patterns (leaderboards, trending) |\n\nCache-aside flow: app checks cache \u2192 miss \u2192 app fetches DB \u2192 app writes cache.\n\nRead-through flow: app asks cache \u2192 miss \u2192 cache fetches DB \u2192 cache returns to app.\n\nRefresh-ahead flow: cache predicts upcoming expiry \u2192 proactively fetches DB \u2192 refreshes key before miss occurs.\n\n**Why not read-through for fast-changing schemas**: fetch logic lives in cache layer config \u2014 harder to update when the data model changes every sprint. Cache-aside keeps fetch logic in app code.\n\n**Why not \"Redis does read-through\"**: Redis is a dumb key-value store with no DB awareness. Read-through is implemented at the app layer via a library abstraction (Spring Cache, Caffeine).\n\n**Thundering herd** (cache-aside risk): on cold start or TTL expiry, many requests miss simultaneously and hammer the DB.\n- Mitigations: mutex lock on miss, probabilistic early expiry, refresh-ahead",
   "keyConcepts": [
-    "LRU", "LFU", "FIFO", "eviction policy", "TTL", "frequency pollution",
-    "write-through", "write-back", "write-around",
-    "cache-aside", "read-through", "write-through pattern", "refresh-ahead",
-    "thundering herd", "TinyLFU"
+    "LRU",
+    "LFU",
+    "FIFO",
+    "eviction policy",
+    "TTL",
+    "frequency pollution",
+    "write-through",
+    "write-back",
+    "write-around",
+    "cache-aside",
+    "read-through",
+    "write-through pattern",
+    "refresh-ahead",
+    "thundering herd",
+    "TinyLFU"
   ],
   "qa": [
     {
       "id": "q-1748044800001",
       "question": "You're building a news feed cache. Articles from the last 2 hours get hammered, then traffic drops. Your 10k-slot cache has a high eviction rate and stale articles stay while new ones keep getting evicted. What's the cause and which eviction policy do you pick?",
-      "answer": "Cause: LFU frequency pollution. Stale articles built up high frequency counts when trending — new articles can't displace them. Fix: switch to LRU (recency-based). Pair with TTL (e.g. 2h) so stale articles expire regardless of memory pressure. LRU handles memory pressure; TTL handles freshness.",
+      "answer": "Cause: LFU frequency pollution. Stale articles built up high frequency counts when trending \u2014 new articles can't displace them. Fix: switch to LRU (recency-based). Pair with TTL (e.g. 2h) so stale articles expire regardless of memory pressure. LRU handles memory pressure; TTL handles freshness.",
       "difficulty": "medium",
-      "tags": ["eviction", "LRU", "LFU", "TTL", "news-feed"],
+      "tags": [
+        "eviction",
+        "LRU",
+        "LFU",
+        "TTL",
+        "news-feed"
+      ],
       "attempts": [],
       "wrongCount": 0,
       "lastReviewed": null
@@ -25,9 +42,13 @@
     {
       "id": "q-1748044800002",
       "question": "When does TTL fire vs when does an eviction policy fire? Can they conflict?",
-      "answer": "TTL fires independently of memory — Redis uses lazy expiry (on access) + active sampling (background). Eviction fires only when cache is full and a new item needs space. They don't conflict — TTL handles freshness, eviction handles memory pressure. Both can run simultaneously.",
+      "answer": "TTL fires independently of memory \u2014 Redis uses lazy expiry (on access) + active sampling (background). Eviction fires only when cache is full and a new item needs space. They don't conflict \u2014 TTL handles freshness, eviction handles memory pressure. Both can run simultaneously.",
       "difficulty": "easy",
-      "tags": ["TTL", "eviction", "Redis"],
+      "tags": [
+        "TTL",
+        "eviction",
+        "Redis"
+      ],
       "attempts": [],
       "wrongCount": 0,
       "lastReviewed": null
@@ -35,9 +56,15 @@
     {
       "id": "q-1748044800003",
       "question": "You're building a banking transaction ledger. Writes are frequent, data loss is unacceptable. Dashboard reads can tolerate 5s staleness. Which write strategy for the ledger, which for the dashboard?",
-      "answer": "Ledger: write-around. Writes go directly to DB (durability guaranteed), cache not polluted with rarely-re-read transaction entries. Dashboard: cache-aside with 5s TTL. Read from cache, miss → fetch from DB, populate cache. Write-back is eliminated immediately — async DB flush risks data loss.",
+      "answer": "Ledger: write-around. Writes go directly to DB (durability guaranteed), cache not polluted with rarely-re-read transaction entries. Dashboard: cache-aside with 5s TTL. Read from cache, miss \u2192 fetch from DB, populate cache. Write-back is eliminated immediately \u2014 async DB flush risks data loss.",
       "difficulty": "medium",
-      "tags": ["write-around", "write-back", "write-through", "banking", "TTL"],
+      "tags": [
+        "write-around",
+        "write-back",
+        "write-through",
+        "banking",
+        "TTL"
+      ],
       "attempts": [],
       "wrongCount": 0,
       "lastReviewed": null
@@ -45,9 +72,13 @@
     {
       "id": "q-1748044800004",
       "question": "Why does write-through have 'no write performance gain' but write-around doesn't get that label, even though both hit the DB on every write?",
-      "answer": "The comparison is vs write-back. Write-through writes to cache as part of the write path — you'd expect a speed gain, but you don't get one because DB write is still synchronous. Write-around doesn't attempt to cache writes at all, so there's no false expectation to correct. Write-back is the only strategy with actual write performance gain (async DB flush).",
+      "answer": "The comparison is vs write-back. Write-through writes to cache as part of the write path \u2014 you'd expect a speed gain, but you don't get one because DB write is still synchronous. Write-around doesn't attempt to cache writes at all, so there's no false expectation to correct. Write-back is the only strategy with actual write performance gain (async DB flush).",
       "difficulty": "medium",
-      "tags": ["write-through", "write-around", "write-back"],
+      "tags": [
+        "write-through",
+        "write-around",
+        "write-back"
+      ],
       "attempts": [],
       "wrongCount": 0,
       "lastReviewed": null
@@ -55,9 +86,14 @@
     {
       "id": "q-1748044800005",
       "question": "Startup, 2 engineers, data model changes every sprint, Spring Boot + Redis, read-heavy user profiles. Cache-aside or read-through?",
-      "answer": "Cache-aside. Redis doesn't natively support read-through — it has no DB awareness. Read-through requires a CacheLoader abstraction (Spring Cache, Caffeine). With fast-changing schemas, fetch logic in cache layer config is harder to update than fetch logic in app code. Cache-aside keeps it in the service. Main risk: thundering herd on cold start or TTL expiry.",
+      "answer": "Cache-aside. Redis doesn't natively support read-through \u2014 it has no DB awareness. Read-through requires a CacheLoader abstraction (Spring Cache, Caffeine). With fast-changing schemas, fetch logic in cache layer config is harder to update than fetch logic in app code. Cache-aside keeps it in the service. Main risk: thundering herd on cold start or TTL expiry.",
       "difficulty": "medium",
-      "tags": ["cache-aside", "read-through", "Redis", "Spring Boot"],
+      "tags": [
+        "cache-aside",
+        "read-through",
+        "Redis",
+        "Spring Boot"
+      ],
       "attempts": [],
       "wrongCount": 0,
       "lastReviewed": null
@@ -67,7 +103,11 @@
       "question": "What is refresh-ahead and when do you use it over read-through?",
       "answer": "Refresh-ahead: cache proactively refreshes a key before it expires, based on predicted access patterns. Avoids the miss entirely. Use when access is predictable and a cache miss would be expensive (e.g. leaderboard refreshed every 30s, trending topics). Read-through waits for a miss to happen. Refresh-ahead eliminates the miss at the cost of possibly refreshing data that won't be accessed.",
       "difficulty": "hard",
-      "tags": ["refresh-ahead", "read-through", "cache-patterns"],
+      "tags": [
+        "refresh-ahead",
+        "read-through",
+        "cache-patterns"
+      ],
       "attempts": [],
       "wrongCount": 0,
       "lastReviewed": null

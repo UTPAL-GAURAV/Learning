@@ -97,6 +97,13 @@ Each topic (e.g. "Cache") is made of sub-topics (e.g. LRU eviction, write-throug
    - Cheat-sheet format: definition → when-to-use → key variants → trade-offs → gotchas
    - Include cross-question answers inline (label them "**Why not X:**")
    - Don't repeat what's already there — append only new material
+   - **Write visually, not as monotonous bullet lists.** Pick the format that best fits the content:
+     - Comparing options (e.g. write-through vs write-back vs write-around) → **Markdown table** with columns: Strategy | How | Perf | Risk | Use when
+     - Hierarchical flow (e.g. request lifecycle, auth flow) → **arrow chain**: `Client → Cache → DB → Response`
+     - Decision logic → **if/then structure**: `If write-heavy + rarely re-read → write-around`
+     - Gotchas / traps → bullet list is fine
+     - Single concept with nuance → 2-3 tight sentences, no list needed
+   - The goal: someone reading the notes should be able to visualize the concept, not just recall words
 
 3. **Key concepts** — add any new concepts to `keyConcepts` array
 
