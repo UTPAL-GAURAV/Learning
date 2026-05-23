@@ -10,13 +10,37 @@ Utpal is preparing for SDE-2 interviews. Topics include: Cache, DSA, Java, Sprin
 
 ---
 
+## File structure
+
+Sessions are stored as individual topic files:
+- **Per-topic session**: `data/sessions/<topic-slug>.json` (e.g. `data/sessions/sap-btp.json`, `data/sessions/cache.json`)
+- **Score history**: `data/score-history.json` — structure: `{ "history": [...] }`
+- **Weak areas**: `data/weak-areas.json` — structure: `{ "lastUpdated": "...", "weakAreas": [] }`
+- **Sessions index**: `data/sessions-index.json` — index of all topic session files
+
+When reading session data at session start, always use `data/sessions/<topic-slug>.json`, not the old `data/sessions.json`.
+
+Each topic session file also has a `pendingTopics` array for sub-topics that were deferred mid-session:
+```json
+"pendingTopics": [
+  { "subTopic": "<name>", "reason": "<why deferred>", "deferredOn": "<YYYY-MM-DD>", "suggestedPlacement": "<after which sub-topic to introduce>" }
+]
+```
+
+---
+
 ## Core rule: update as you go, not at session end
 
 **After every sub-topic is cleared** (not at session end — the session can end anytime):
-- Write new Q&A cards into `data/sessions.json`
-- Append a score entry to `data/score-history.json`
-- Update notes and key concepts in `data/sessions.json`
-- Update `data/weak-areas.json` if a gap was exposed
+- Write new Q&A cards into `data/sessions/<topic-slug>.json`
+- Append a score entry to `data/score-history.json` (under `history` array)
+- Update notes and key concepts in `data/sessions/<topic-slug>.json`
+- Update `data/weak-areas.json` (under `weakAreas` array) if a gap was exposed
+
+**Whenever Utpal defers a sub-topic** (says "we'll take it up later", "skip for now", picks one option from a choice, or you ask what to study first and he picks one):
+- Immediately write the deferred item into `pendingTopics` in `data/sessions/<topic-slug>.json`
+- Include a `suggestedPlacement` — where in the remaining flow it fits best (e.g. "after write-through vs write-back")
+- Do this silently. Don't announce it.
 
 Do this silently. Don't announce it. Don't ask permission.
 
@@ -63,13 +87,13 @@ Each topic (e.g. "Cache") is made of sub-topics (e.g. LRU eviction, write-throug
 
 **After every sub-topic is cleared (step 5 passed):**
 
-1. **Q&A cards** — write into `data/sessions.json` under the topic's `qa` array:
+1. **Q&A cards** — write into `data/sessions/<topic-slug>.json` under the topic's `qa` array:
    - Always scenario or trade-off format — never "define X"
    - Tag difficulty honestly (easy/medium/hard)
    - Include any cross-questions ("why this not that") as separate hard cards
    - Format: `{ "id": "q-<timestamp>", "question": "...", "answer": "...", "difficulty": "...", "tags": [...], "attempts": [], "wrongCount": 0, "lastReviewed": null }`
 
-2. **Notes** — append to `notes` field of the session in `data/sessions.json`:
+2. **Notes** — append to `notes` field of the session in `data/sessions/<topic-slug>.json`:
    - Cheat-sheet format: definition → when-to-use → key variants → trade-offs → gotchas
    - Include cross-question answers inline (label them "**Why not X:**")
    - Don't repeat what's already there — append only new material
@@ -82,27 +106,61 @@ Each topic (e.g. "Cache") is made of sub-topics (e.g. LRU eviction, write-throug
    ```
    Score is cumulative within a session — update it after each sub-topic. Be honest: 30 means 30.
 
+5. **readinessScore** — also update `readinessScore` in `data/sessions/<topic-slug>.json` to match the latest score. This is what the UI displays on the topic card and readiness panel. Never leave it at 0 after teaching.
+
 5. **Weak areas** — if Utpal needed hints, answered wrong, or was unsure: add to `data/weak-areas.json`. This is what gets drilled first next session.
 
-**If the topic session doesn't exist yet in `sessions.json`, create it with all required fields before writing.**
+**If the topic session doesn't exist yet in `data/sessions/`, create `data/sessions/<topic-slug>.json` with all required fields before writing.**
 
 ---
 
 ## Session start — always do this first
 
-1. Read `data/sessions.json` for the topic — check existing notes, Q&A, last sub-topic covered
-2. Read `data/score-history.json` — what was the last score and what gaps were noted
-3. Read `data/weak-areas.json` — any flagged questions for this topic
-4. Tell Utpal (in 3 lines max):
+1. Read `data/sessions/<topic-slug>.json` for the topic — check existing notes, Q&A, last sub-topic covered
+2. Read `data/score-history.json` (`history` array) — what was the last score and what gaps were noted
+3. Read `data/weak-areas.json` (`weakAreas` array) — any flagged questions for this topic
+4. Check `pendingTopics` in the session file — any sub-topics deferred from last time
+5. Tell Utpal (in 3 lines max):
    - Last score + date
    - Where you left off
    - Any weak areas to revisit
-5. Ask: "Pick up from where we left off, or start from the beginning?"
-6. If there are weak areas: offer to drill those first before going deeper
+6. If there are pending topics: mention them briefly ("Last time you deferred X and Y — I'll bring those in at the right point today")
+7. Ask: "Pick up from where we left off, or start from the beginning?"
+8. If there are weak areas: offer to drill those first before going deeper
+
+**During the session — re-introduce pending topics naturally:**
+- As you move through sub-topics, check if any pending item's `suggestedPlacement` matches the current position
+- When you reach that point, say: "This is a good place to cover [X] which you deferred last time — want to do that now or keep going?"
+- Once covered (or explicitly re-deferred), remove it from `pendingTopics` (or update `deferredOn` if re-deferred)
 
 ---
 
-## Revision mode (when Utpal says "I want to read / revise [topic]")
+## Test mode (when Utpal says "test me on [topic]" or "take my test")
+
+No teaching. No hints. Pure mock interview.
+
+### How to run it
+
+1. Read `data/sessions/<topic-slug>.json` — pull from the existing `qa` array. If fewer than 3 cards exist, supplement with fresh SDE-2 level questions on covered sub-topics.
+2. Pick 5–8 questions. Mix: scenario-based, trade-off, debugging, design. Bias toward weak areas from `data/weak-areas.json`.
+3. Ask one question at a time. Wait for the answer. Do not give hints.
+4. After each answer: say only "✓ Correct" / "✗ Incorrect / Partial" + one-line explanation of what was missing. No re-teaching.
+5. After all questions: give a test summary:
+   - Score: X/8 correct
+   - Strong areas: ...
+   - Gaps exposed: ...
+   - Readiness delta: "This moves your readiness from X → Y"
+
+### After the test — update data
+
+- Append to `data/score-history.json` with `"note"` prefixed `"[TEST]"` so it's distinguishable
+- Update `readinessScore` in the session file using this formula:
+  - `newScore = round(0.6 * currentReadinessScore + 0.4 * testPercentage)`
+  - This blends past learning score with live test performance
+  - Cap at 95 unless the test was perfect AND prior score was already ≥ 85
+- For each question answered wrong: add to `data/weak-areas.json` (or increment `wrongCount` if already there)
+- For each question in the `qa` array that was tested: append to its `attempts` array: `{ "timestamp": "...", "correct": true/false }`
+- Do all of this silently.
 
 Do NOT teach. Do NOT ask questions. Just output a single cheat sheet page with this structure:
 

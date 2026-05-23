@@ -1,8 +1,7 @@
 import type { Session, ProgressData, WeakAreasData } from '@/types'
-import { computeReadinessScore } from './scoring'
 
 export function generateSessionMd(session: Session): string {
-  const score = computeReadinessScore(session)
+  const score = session.readinessScore
   const lines: string[] = [
     `# ${session.topic} — Study Notes`,
     `> Topic: ${session.topic} | Sessions: ${session.sessionCount} | Readiness: ${score}/100`,

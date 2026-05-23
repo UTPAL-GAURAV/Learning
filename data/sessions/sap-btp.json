@@ -4,9 +4,9 @@
   "topicSlug": "sap-btp",
   "createdAt": "2026-05-23T00:00:00.000Z",
   "updatedAt": "2026-05-23T00:00:00.000Z",
-  "readinessScore": 0,
-  "sessionCount": 1,
-  "lastSubTopic": "security-identity-xsuaa",
+  "readinessScore": 68,
+  "sessionCount": 2,
+  "lastSubTopic": "destination-cloud-connector-cap-mta",
   "keyConcepts": [
     "Clean Core principle",
     "Side-by-side extensibility",
@@ -30,14 +30,26 @@
     "JWT token structure",
     "xs-security.json",
     "Scope namespacing",
-    "IAS user groups"
+    "IAS user groups",
+    "MTA (Multi-Target Application)",
+    "mta.yaml",
+    "mbt build / cf deploy",
+    "MTA module vs resource",
+    "CAP (Cloud Application Programming Model)",
+    "CDS (Core Data Services)",
+    "CAP annotations (@readonly, @Capabilities)",
+    "CAP projection",
+    "CAP composition vs association",
+    "SCC on-premise vs S/4HANA Cloud",
+    "Outbound tunnel vs inbound port",
+    "Virtual host mapping"
   ],
-  "notes": "## SAP BTP\n\n### What it is\nSAP's cloud platform for extending SAP workloads (S/4HANA etc.) without touching the core system. Think AWS/Azure but for SAP.\n\n### Clean Core principle\nKeep S/4HANA standard — zero custom code inside ERP. All extensions go on BTP.\n**Why:** Custom code inside S/4 breaks on SAP upgrades. BTP extensions are decoupled and survive upgrades.\n\n### Side-by-Side Extensibility\nThe official SAP pattern: your app lives *beside* S/4, not inside it.\n- Connected via **Destination Service** (stores connection config) + **Cloud Connector** (on-prem tunnel agent)\n- App scales independently, debugged independently, deployed independently\n\n### Account Hierarchy\n```\nGlobal Account (1 per company — billing/contract entity)\n└── Directory (team grouping layer)\n    └── Subaccount (isolation boundary — Dev/QA/Prod per team)\n        └── Space (CF) / Namespace (Kyma)\n            └── Apps + Services\n```\n- Global Account = SAP contract. Don't create one per team.\n- Directory = groups subaccounts for a team\n- Subaccount = isolation boundary. Separate users, roles, services.\n- Access controlled by **Role Collections** assigned per subaccount\n\n### Services — Instance vs Binding\n- **Service Instance** = the provisioned resource (DB, queue, etc.). Delete it → resource + data gone.\n- **Service Binding** = credentials linking an app to a service instance. Delete it → credentials revoked, data safe. Can recreate.\n- Multiple bindings can point to one instance.\n- Credentials injected via `VCAP_SERVICES` env var — never hardcoded.\n\n### CF Space Roles\n- `Space Developer` — deploy apps, create/delete instances and bindings\n- `Space Auditor` — read-only\n- `Space Manager` — manage space membership\n- Junior/untrusted devs → Space Auditor\n\n### Preventing data loss on services\n1. Least-privilege roles (junior devs get Space Auditor)\n2. Configure backup retention on provisioned services (HANA Cloud has built-in backup + PITR)\n\n### Runtimes — CF vs Kyma vs ABAP\n| Runtime | Pick when |\n|---|---|\n| Cloud Foundry | Simple apps (Spring Boot/Node.js), team new to K8s, just push code |\n| Kyma | Microservices, event-driven, need K8s control, serverless functions |\n| ABAP Environment | ABAP devs extending S/4 using RAP model |\n- CF buildpacks handle JVM/runtime automatically — no container knowledge needed\n- Kyma has Istio service mesh built in, SAP Eventing, serverless Functions\n- Kyma trigger: multiple microservices, event-driven, custom sidecars\n\n### Entitlements & Quotas\n- **Entitlement** = permission for a subaccount to use a specific service + plan\n- **Quota** = how much (instances / memory GB / credits/units)\n- Flow: SAP → Global Account entitlements → distribute to Subaccounts\n- Without entitlement, service doesn't appear in Service Marketplace\n- Quota unit varies by service: HANA Cloud = instance count, CF Runtime = memory GB, Integration Suite = credits per message\n- Billing ≠ Entitlement: entitlement = permission, billing = actual consumption (compute + storage + API calls)\n- HANA Cloud billed on: compute (vCPUs/RAM) + storage (GB used) — independent of instance quota\n\n**Why service not in Marketplace — 2 checks:**\n1. Entitlement not assigned to subaccount at Global Account level\n2. Wrong/missing service plan assigned, OR subaccount region ≠ service availability region\nNote: the SERVICE appears if any plan is entitled. The missing PLAN shows up when creating an instance.\n\n**Why not S/4HANA vs HANA Cloud confusion:** S/4HANA = the ERP system. SAP HANA Cloud = managed database service on BTP.\n\n### Service Bindings — Why Multiple\n- Bindings are per-app (VCAP_SERVICES is per-container, not shareable)\n- Binding lifecycle tied to app — deleting app deletes its bindings\n- Service brokers often create app-specific DB users per binding\n- Use cases for multiple bindings on one instance:\n  1. Blue-green deployment (app-v1 + app-v2 both need DB)\n  2. Multiple apps sharing one DB (API + worker)\n  3. Zero-downtime credential rotation (create new → update app → delete old)\n\n### Backup configuration\n- At creation: `cf create-service <service> <plan> <name> -c '{\"data\": {\"backupRetentionDays\": 35}}'`\n- After creation: service-specific dashboard (HANA Cloud Central for HANA)\n\n### Security & Identity — XSUAA + IAS\n- **IAS** = who you are (login, MFA, identity provider)\n- **XSUAA** = what you can do (OAuth 2.0 server, issues JWT with scopes)\n- XSUAA is SAP's extended version of open-source UAA (Cloud Foundry). OAuth 2.0 + JWT are universal standards.\n\n**Permission chain:**\n```\nScope (defined in xs-security.json)\n  → Role Template\n    → Role\n      → Role Collection\n        → User / IAS Group\n```\n\n**JWT structure (BTP):**\n- Header: alg (RS256), kid\n- Payload: email, user_name, scope (namespaced: `myapp!t12345.delete`), xs.rolecollections, zid (tenant), exp, iss\n- Signature: RS256, verified via XSUAA JWKS endpoint\n\n**Scope namespacing trap:** Scopes in token are `<appName>!t<instanceId>.<scopeName>`. Never hardcode — use XSUAA Spring library which resolves automatically.\n\n**Role Collections are subaccount-local** — don't copy between Dev and Prod. Must recreate/automate per subaccount.\n\n**Scalable user onboarding:** IAS group → mapped to Role Collection. Don't assign Role Collections to 50 users manually.\n\n**Debug order for 403:**\n1. Decode JWT → check scope array\n2. Empty scopes → xs-security.json not applied to XSUAA instance\n3. Some scopes but not the right one → Role Collection chain broken (User → RC → Role → Scope)\n4. Scopes correct but still 403 → app checking wrong scope name (namespace mismatch)\n\n**Why everyone 403 in Prod:**\n1. Role Collections not assigned in Prod subaccount (most common)\n2. IAS not configured as trusted IdP in Prod subaccount\n3. App bound to wrong XSUAA instance\n4. xs-security.json not applied to Prod XSUAA instance\n",
+  "notes": "## SAP BTP\n\n### What it is\nSAP's cloud platform for extending SAP workloads (S/4HANA etc.) without touching the core system. Think AWS/Azure but for SAP.\n\n### Clean Core principle\nKeep S/4HANA standard \u2014 zero custom code inside ERP. All extensions go on BTP.\n**Why:** Custom code inside S/4 breaks on SAP upgrades. BTP extensions are decoupled and survive upgrades.\n\n### Side-by-Side Extensibility\nThe official SAP pattern: your app lives *beside* S/4, not inside it.\n- Connected via **Destination Service** (stores connection config) + **Cloud Connector** (on-prem tunnel agent)\n- App scales independently, debugged independently, deployed independently\n\n### Account Hierarchy\n```\nGlobal Account (1 per company \u2014 billing/contract entity)\n\u2514\u2500\u2500 Directory (team grouping layer)\n    \u2514\u2500\u2500 Subaccount (isolation boundary \u2014 Dev/QA/Prod per team)\n        \u2514\u2500\u2500 Space (CF) / Namespace (Kyma)\n            \u2514\u2500\u2500 Apps + Services\n```\n- Global Account = SAP contract. Don't create one per team.\n- Directory = groups subaccounts for a team\n- Subaccount = isolation boundary. Separate users, roles, services.\n- Access controlled by **Role Collections** assigned per subaccount\n\n### Services \u2014 Instance vs Binding\n- **Service Instance** = the provisioned resource (DB, queue, etc.). Delete it \u2192 resource + data gone.\n- **Service Binding** = credentials linking an app to a service instance. Delete it \u2192 credentials revoked, data safe. Can recreate.\n- Multiple bindings can point to one instance.\n- Credentials injected via `VCAP_SERVICES` env var \u2014 never hardcoded.\n\n### CF Space Roles\n- `Space Developer` \u2014 deploy apps, create/delete instances and bindings\n- `Space Auditor` \u2014 read-only\n- `Space Manager` \u2014 manage space membership\n- Junior/untrusted devs \u2192 Space Auditor\n\n### Preventing data loss on services\n1. Least-privilege roles (junior devs get Space Auditor)\n2. Configure backup retention on provisioned services (HANA Cloud has built-in backup + PITR)\n\n### Runtimes \u2014 CF vs Kyma vs ABAP\n| Runtime | Pick when |\n|---|---|\n| Cloud Foundry | Simple apps (Spring Boot/Node.js), team new to K8s, just push code |\n| Kyma | Microservices, event-driven, need K8s control, serverless functions |\n| ABAP Environment | ABAP devs extending S/4 using RAP model |\n- CF buildpacks handle JVM/runtime automatically \u2014 no container knowledge needed\n- Kyma has Istio service mesh built in, SAP Eventing, serverless Functions\n- Kyma trigger: multiple microservices, event-driven, custom sidecars\n\n### Entitlements & Quotas\n- **Entitlement** = permission for a subaccount to use a specific service + plan\n- **Quota** = how much (instances / memory GB / credits/units)\n- Flow: SAP \u2192 Global Account entitlements \u2192 distribute to Subaccounts\n- Without entitlement, service doesn't appear in Service Marketplace\n- Quota unit varies by service: HANA Cloud = instance count, CF Runtime = memory GB, Integration Suite = credits per message\n- Billing \u2260 Entitlement: entitlement = permission, billing = actual consumption (compute + storage + API calls)\n- HANA Cloud billed on: compute (vCPUs/RAM) + storage (GB used) \u2014 independent of instance quota\n\n**Why service not in Marketplace \u2014 2 checks:**\n1. Entitlement not assigned to subaccount at Global Account level\n2. Wrong/missing service plan assigned, OR subaccount region \u2260 service availability region\nNote: the SERVICE appears if any plan is entitled. The missing PLAN shows up when creating an instance.\n\n**Why not S/4HANA vs HANA Cloud confusion:** S/4HANA = the ERP system. SAP HANA Cloud = managed database service on BTP.\n\n### Service Bindings \u2014 Why Multiple\n- Bindings are per-app (VCAP_SERVICES is per-container, not shareable)\n- Binding lifecycle tied to app \u2014 deleting app deletes its bindings\n- Service brokers often create app-specific DB users per binding\n- Use cases for multiple bindings on one instance:\n  1. Blue-green deployment (app-v1 + app-v2 both need DB)\n  2. Multiple apps sharing one DB (API + worker)\n  3. Zero-downtime credential rotation (create new \u2192 update app \u2192 delete old)\n\n### Backup configuration\n- At creation: `cf create-service <service> <plan> <name> -c '{\"data\": {\"backupRetentionDays\": 35}}'`\n- After creation: service-specific dashboard (HANA Cloud Central for HANA)\n\n### Security & Identity \u2014 XSUAA + IAS\n- **IAS** = who you are (login, MFA, identity provider)\n- **XSUAA** = what you can do (OAuth 2.0 server, issues JWT with scopes)\n- XSUAA is SAP's extended version of open-source UAA (Cloud Foundry). OAuth 2.0 + JWT are universal standards.\n\n**Permission chain:**\n```\nScope (defined in xs-security.json)\n  \u2192 Role Template\n    \u2192 Role\n      \u2192 Role Collection\n        \u2192 User / IAS Group\n```\n\n**JWT structure (BTP):**\n- Header: alg (RS256), kid\n- Payload: email, user_name, scope (namespaced: `myapp!t12345.delete`), xs.rolecollections, zid (tenant), exp, iss\n- Signature: RS256, verified via XSUAA JWKS endpoint\n\n**Scope namespacing trap:** Scopes in token are `<appName>!t<instanceId>.<scopeName>`. Never hardcode \u2014 use XSUAA Spring library which resolves automatically.\n\n**Role Collections are subaccount-local** \u2014 don't copy between Dev and Prod. Must recreate/automate per subaccount.\n\n**Scalable user onboarding:** IAS group \u2192 mapped to Role Collection. Don't assign Role Collections to 50 users manually.\n\n**Debug order for 403:**\n1. Decode JWT \u2192 check scope array\n2. Empty scopes \u2192 xs-security.json not applied to XSUAA instance\n3. Some scopes but not the right one \u2192 Role Collection chain broken (User \u2192 RC \u2192 Role \u2192 Scope)\n4. Scopes correct but still 403 \u2192 app checking wrong scope name (namespace mismatch)\n\n**Why everyone 403 in Prod:**\n1. Role Collections not assigned in Prod subaccount (most common)\n2. IAS not configured as trusted IdP in Prod subaccount\n3. App bound to wrong XSUAA instance\n4. xs-security.json not applied to Prod XSUAA instance\n\n### Destination Service & Cloud Connector\n- **BTP** runs on SAP's cloud servers (not your company's servers)\n- **S/4HANA on-prem** = installed on company's own servers, private IP, not reachable from internet\n- **S/4HANA Cloud** = hosted by SAP, has public URL, no SCC needed\n- **Destination Service** = central config store for connection details (URL, auth, credentials). App fetches by name at runtime.\n- **Cloud Connector (SCC)** = standalone Java agent installed on a machine INSIDE company network. NOT a BTP service \u2014 you download and install it.\n\n**Why outbound tunnel:**\n- Corporate firewalls block inbound by default\n- SCC makes outbound HTTPS call from inside corp network to BTP \u2014 firewall allows this\n- Creates a persistent tunnel. BTP sends requests back through it.\n- S/4HANA never needs a public IP. No inbound firewall rule changes.\n\n**Virtual host mapping (SCC config):**\n- SCC maps virtual host `s4hana-prod:443` \u2192 real host `192.168.1.50:443`\n- BTP destination uses the virtual host \u2014 never sees the real IP\n\n**Developer responsibility:**\n- Ops/basis installs SCC and connects it to subaccount\n- Developer creates the Destination in BTP cockpit (or via MTA)\n- Developer fetches destination by name in app code (SAP Cloud SDK)\n\n**When NOT to use SCC:** S/4HANA Cloud or any public URL target \u2014 use Destination directly, Proxy Type = Internet.\n\n### MTA \u2014 Multi-Target Application\n- Deployment package that bundles all BTP resources (apps + services) into one deployable unit\n- Described in `mta.yaml`. Compiled with `mbt build` \u2192 produces `.mtar` archive. Deployed with `cf deploy app.mtar`.\n- **Module** = something that runs (CF app, HTML5 app)\n- **Resource** = something provisioned (XSUAA instance, HANA instance, Destination)\n- `requires/provides` in mta.yaml = wires modules to resources (declares bindings)\n- MTA deployer resolves dependency order: XSUAA provisioned before app binds to it\n\n**XSUAA + app are coupled at runtime:**\n- App reads VCAP_SERVICES \u2192 gets XSUAA credentials \u2192 validates JWTs against that XSUAA instance\n- Scopes in JWT come from xs-security.json applied to that XSUAA instance\n- If XSUAA updates (new scope names) but old app still running \u2192 scope name mismatch \u2192 403\n\n**Partial deployment failure recovery:**\n1. Revert XSUAA to previous xs-security.json (unblocks users immediately)\n2. Fix app startup failure (`cf logs <app> --recent`)\n3. Redeploy both together\n\n### CAP \u2014 Cloud Application Programming Model\n- SAP's opinionated framework for BTP apps. Define data model + service layer in CDS (Core Data Services) \u2192 CAP auto-generates OData V4 API, DB tables, auth checks.\n- Think: Spring Boot + JPA + auto-REST, but SAP-flavoured.\n\n**CDS concepts:**\n- `entity` = DB table definition\n- `service { entity X as projection on X }` = API exposure layer (separate from DB model)\n- Projection can expose subset of columns or a computed view\n- `Association` = foreign key (@ManyToOne equivalent)\n- `Composition` = owned child, lifecycle tied to parent (@OneToMany cascade=ALL equivalent)\n- `@cds.persistence.skip` = entity exists in CDS model but no DB table created (transient/virtual)\n\n**Restricting operations:**\n- `@readonly` on service projection \u2192 GET only, no POST/PUT/DELETE\n- `@Capabilities.DeleteRestrictions.Deletable: false` \u2192 blocks DELETE specifically\n- CAP OData handler reads annotations \u2192 returns 405 automatically, no custom filter code\n- `@requires: 'admin'` \u2192 CAP checks XSUAA JWT scope automatically\n\n**CAP Java:** Spring Boot under the hood + SAP CAP SDK on top. Custom logic via `@Before`/`@On`/`@After` handlers.\n",
   "qa": [
     {
       "id": "q-20260523-001",
       "question": "You need a custom approval workflow app that reads PO data from S/4HANA and sends Slack notifications. Why build it on BTP instead of inside S/4? What's the risk of building inside S/4?",
-      "answer": "Build on BTP: Clean Core principle — keep S/4 standard so SAP upgrades don't break custom code. Side-by-side extensibility pattern. Benefits: upgrade safety, independent scaling, isolated debugging. Risk of building inside S/4: breaks on SAP patches/version upgrades, increases S/4 complexity and attack surface, violates SAP's support terms for custom code in core.",
+      "answer": "Build on BTP: Clean Core principle \u2014 keep S/4 standard so SAP upgrades don't break custom code. Side-by-side extensibility pattern. Benefits: upgrade safety, independent scaling, isolated debugging. Risk of building inside S/4: breaks on SAP patches/version upgrades, increases S/4 complexity and attack surface, violates SAP's support terms for custom code in core.",
       "difficulty": "medium",
       "tags": [
         "sap-btp",
@@ -52,7 +64,7 @@
     {
       "id": "q-20260523-002",
       "question": "Your company has 3 teams: HR, Finance, Logistics. HR data must never be accessible to Finance developers. How do you structure the BTP account hierarchy?",
-      "answer": "One Global Account for the company (billing entity — not one per team). Create a Directory per team (HR, Finance, Logistics). Each Directory contains the team's Subaccounts (Dev, QA, Prod). Assign Role Collections per subaccount — HR devs only get roles on HR subaccounts. Isolation is enforced by subaccount boundaries + role assignments, not by separate Global Accounts.",
+      "answer": "One Global Account for the company (billing entity \u2014 not one per team). Create a Directory per team (HR, Finance, Logistics). Each Directory contains the team's Subaccounts (Dev, QA, Prod). Assign Role Collections per subaccount \u2014 HR devs only get roles on HR subaccounts. Isolation is enforced by subaccount boundaries + role assignments, not by separate Global Accounts.",
       "difficulty": "medium",
       "tags": [
         "sap-btp",
@@ -67,7 +79,7 @@
     {
       "id": "q-20260523-003",
       "question": "A junior dev accidentally deletes a service instance on BTP CF. Your app crashes and data is lost. How should the setup have prevented this? What's the difference between deleting a service instance vs a service binding?",
-      "answer": "Prevention: (1) Junior devs should have Space Auditor role, not Space Developer — Auditor is read-only. (2) Configure backup retention on the service (e.g. HANA Cloud PITR). Service Instance = the resource itself — deleting it destroys data. Service Binding = credentials linking app to instance — deleting it only revokes credentials, data is untouched. Binding can be recreated; instance cannot be recovered without backup.",
+      "answer": "Prevention: (1) Junior devs should have Space Auditor role, not Space Developer \u2014 Auditor is read-only. (2) Configure backup retention on the service (e.g. HANA Cloud PITR). Service Instance = the resource itself \u2014 deleting it destroys data. Service Binding = credentials linking app to instance \u2014 deleting it only revokes credentials, data is untouched. Binding can be recreated; instance cannot be recovered without backup.",
       "difficulty": "medium",
       "tags": [
         "sap-btp",
@@ -83,7 +95,7 @@
     {
       "id": "q-20260523-004",
       "question": "Your team chose Cloud Foundry for a Spring Boot REST API on BTP. 6 months later you're asked to add real-time order event processing from S/4HANA. Do you stay on CF or move to Kyma? Why?",
-      "answer": "Move to Kyma (or add Kyma alongside CF). Event-driven architecture is Kyma's strength — it has built-in SAP Eventing, Istio service mesh, and serverless Functions for event handlers. CF can handle events but lacks native event-driven primitives. If the existing API is stable, keep it on CF and deploy new event-processing services on Kyma.",
+      "answer": "Move to Kyma (or add Kyma alongside CF). Event-driven architecture is Kyma's strength \u2014 it has built-in SAP Eventing, Istio service mesh, and serverless Functions for event handlers. CF can handle events but lacks native event-driven primitives. If the existing API is stable, keep it on CF and deploy new event-processing services on Kyma.",
       "difficulty": "medium",
       "tags": [
         "sap-btp",
@@ -99,7 +111,7 @@
     {
       "id": "q-20260523-005",
       "question": "A team opens the Service Marketplace in their new BTP subaccount and SAP HANA Cloud is not listed. The company has paid for HANA Cloud. What are the two things you check?",
-      "answer": "1. Entitlement not assigned: Go to Global Account → Entitlements → Subaccount Assignments → assign HANA Cloud entitlement to the subaccount. 2. Wrong service plan or wrong region: Verify the correct plan (e.g. 'hana' not 'hana-free') is assigned — the service appears in marketplace if any plan is entitled, but the needed plan won't show in the instance creation form. Also check subaccount region matches service availability.",
+      "answer": "1. Entitlement not assigned: Go to Global Account \u2192 Entitlements \u2192 Subaccount Assignments \u2192 assign HANA Cloud entitlement to the subaccount. 2. Wrong service plan or wrong region: Verify the correct plan (e.g. 'hana' not 'hana-free') is assigned \u2014 the service appears in marketplace if any plan is entitled, but the needed plan won't show in the instance creation form. Also check subaccount region matches service availability.",
       "difficulty": "medium",
       "tags": [
         "sap-btp",
@@ -114,7 +126,7 @@
     {
       "id": "q-20260523-006",
       "question": "Why can't two CF apps share the same service binding? Give the technical reason.",
-      "answer": "Three reasons: (1) VCAP_SERVICES is per-app container — app containers are isolated, App B can't read App A's env vars. (2) Binding lifecycle is tied to the app — deleting App A deletes its binding, revoking App B's credentials unintentionally. (3) Service brokers often create app-specific credentials (e.g. separate DB users per binding) — sharing a binding means sharing an identity, losing audit trail and independent revocation.",
+      "answer": "Three reasons: (1) VCAP_SERVICES is per-app container \u2014 app containers are isolated, App B can't read App A's env vars. (2) Binding lifecycle is tied to the app \u2014 deleting App A deletes its binding, revoking App B's credentials unintentionally. (3) Service brokers often create app-specific credentials (e.g. separate DB users per binding) \u2014 sharing a binding means sharing an identity, losing audit trail and independent revocation.",
       "difficulty": "hard",
       "tags": [
         "sap-btp",
@@ -129,7 +141,7 @@
     {
       "id": "q-20260523-007",
       "question": "Your BTP HANA Cloud instance has a quota of 2 in your subaccount entitlement. You've stored 500GB of data in one instance. What does the quota of 2 control, and what actually drives your storage bill?",
-      "answer": "Quota of 2 = you can create up to 2 HANA Cloud instances in this subaccount. It does not control data size. Storage bill is driven by GB consumed — 500GB stored is billed as storage on top of compute (vCPUs/RAM) cost. Entitlement = permission to create instances. Billing = compute + storage consumed.",
+      "answer": "Quota of 2 = you can create up to 2 HANA Cloud instances in this subaccount. It does not control data size. Storage bill is driven by GB consumed \u2014 500GB stored is billed as storage on top of compute (vCPUs/RAM) cost. Entitlement = permission to create instances. Billing = compute + storage consumed.",
       "difficulty": "medium",
       "tags": [
         "sap-btp",
@@ -144,8 +156,8 @@
     },
     {
       "id": "q-20260523-008",
-      "question": "You promote a BTP app to Prod. Every user gets 403 on every endpoint — even admins. App is deployed, XSUAA binding exists. What do you check first?",
-      "answer": "Role Collections are subaccount-specific — they don't copy from Dev to Prod. First: decode a Prod user's JWT — if scope array is empty or missing app scopes, Role Collections are not assigned in Prod. Also check: IAS not configured as trusted IdP in Prod subaccount, app bound to wrong XSUAA instance, xs-security.json not applied to Prod XSUAA instance.",
+      "question": "You promote a BTP app to Prod. Every user gets 403 on every endpoint \u2014 even admins. App is deployed, XSUAA binding exists. What do you check first?",
+      "answer": "Role Collections are subaccount-specific \u2014 they don't copy from Dev to Prod. First: decode a Prod user's JWT \u2014 if scope array is empty or missing app scopes, Role Collections are not assigned in Prod. Also check: IAS not configured as trusted IdP in Prod subaccount, app bound to wrong XSUAA instance, xs-security.json not applied to Prod XSUAA instance.",
       "difficulty": "hard",
       "tags": [
         "sap-btp",
@@ -160,8 +172,8 @@
     },
     {
       "id": "q-20260523-009",
-      "question": "A user's decoded JWT shows scope: [\"openid\"] only — no app scopes at all, despite having the correct Role Collection assigned. What's broken?",
-      "answer": "XSUAA doesn't know the app exists — xs-security.json was not applied to the XSUAA service instance. Role Collection chain is irrelevant if XSUAA has no record of the app's scopes. Fix: check which XSUAA instance the app is bound to, verify xs-security.json is applied to that instance. Empty scope array = XSUAA/deployment problem, not Role Collection problem.",
+      "question": "A user's decoded JWT shows scope: [\"openid\"] only \u2014 no app scopes at all, despite having the correct Role Collection assigned. What's broken?",
+      "answer": "XSUAA doesn't know the app exists \u2014 xs-security.json was not applied to the XSUAA service instance. Role Collection chain is irrelevant if XSUAA has no record of the app's scopes. Fix: check which XSUAA instance the app is bound to, verify xs-security.json is applied to that instance. Empty scope array = XSUAA/deployment problem, not Role Collection problem.",
       "difficulty": "hard",
       "tags": [
         "sap-btp",
@@ -177,7 +189,7 @@
     {
       "id": "q-20260523-010",
       "question": "You need to onboard 50 new employees to a BTP app with read-only access. What's the scalable approach, and what's the wrong way a junior admin would do it?",
-      "answer": "Scalable: Create an IAS user group (e.g. HR-Readers), add all 50 users, map the group to the Role Collection in BTP. New hires just join the group — no individual BTP assignments. Wrong way: assigning the Role Collection manually to each user one by one in the cockpit — 50 manual operations, doesn't scale.",
+      "answer": "Scalable: Create an IAS user group (e.g. HR-Readers), add all 50 users, map the group to the Role Collection in BTP. New hires just join the group \u2014 no individual BTP assignments. Wrong way: assigning the Role Collection manually to each user one by one in the cockpit \u2014 50 manual operations, doesn't scale.",
       "difficulty": "medium",
       "tags": [
         "sap-btp",
@@ -185,6 +197,71 @@
         "role-collections",
         "user-groups",
         "onboarding"
+      ],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-20260523-011",
+      "question": "Your BTP app needs to call S/4HANA which is installed on your company's private servers (no public IP). Walk me through the end-to-end connectivity setup. Who does what?",
+      "answer": "Ops/basis team: download SCC, install on a machine inside corporate network, connect SCC to BTP subaccount (outbound HTTPS tunnel \u2014 no inbound firewall changes). Configure virtual host mapping in SCC: virtual `s4hana-prod:443` \u2192 real internal IP. Developer: create Destination in BTP subaccount (URL = virtual host, Proxy Type = OnPremise, auth config). App: bind to Destination Service instance, fetch destination by name at runtime using SAP Cloud SDK.",
+      "difficulty": "medium",
+      "tags": [
+        "sap-btp",
+        "cloud-connector",
+        "destination-service",
+        "on-premise",
+        "scc"
+      ],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-20260523-012",
+      "question": "Why does Cloud Connector use an outbound tunnel instead of requiring S/4HANA to open an inbound port? What's the security trade-off?",
+      "answer": "Corporate firewalls block inbound traffic by default \u2014 S/4HANA having a public IP and open inbound port means it's reachable from the internet, a huge security risk for a core ERP. SCC flips the direction: it makes an outbound HTTPS call from inside the network (firewall allows outbound), creating a persistent tunnel to BTP. BTP sends requests back through that tunnel. S/4HANA never gets a public IP, no inbound firewall rules needed.",
+      "difficulty": "medium",
+      "tags": [
+        "sap-btp",
+        "cloud-connector",
+        "security",
+        "tunnel",
+        "on-premise"
+      ],
+      "attempts": [],
+      "wrongCount": 1,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-20260523-013",
+      "question": "Your MTA deployment to Prod partially failed \u2014 XSUAA updated with new scope names but the new app version crashed on startup. Old app is still running. Users get 403. What's the root cause and what's your immediate fix?",
+      "answer": "Root cause: XSUAA now issues tokens with new scope names. Old app checks for old scope names \u2192 mismatch \u2192 403. Immediate fix: revert XSUAA to previous xs-security.json so old app and XSUAA are in sync again \u2014 users unblocked. Then: check cf logs for app crash reason, fix, redeploy both XSUAA and app together as one MTA deployment.",
+      "difficulty": "hard",
+      "tags": [
+        "sap-btp",
+        "mta",
+        "xsuaa",
+        "deployment",
+        "xs-security",
+        "403"
+      ],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-20260523-014",
+      "question": "In a CAP app, you want the Orders entity to be queryable but never deletable \u2014 not even by admins. How do you enforce this without writing a custom security filter?",
+      "answer": "Add `@Capabilities.DeleteRestrictions.Deletable: false` annotation on the Orders entity in the service projection layer (not the model layer). CAP's OData handler reads this annotation and automatically returns 405 Method Not Allowed for DELETE requests. No custom handler code needed.",
+      "difficulty": "medium",
+      "tags": [
+        "sap-btp",
+        "cap",
+        "cds",
+        "annotations",
+        "odata"
       ],
       "attempts": [],
       "wrongCount": 0,

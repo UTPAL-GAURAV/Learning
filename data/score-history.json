@@ -1,10 +1,22 @@
 {
   "history": [
     {
+      "topic": "cache",
+      "date": "2026-05-23",
+      "score": 55,
+      "note": "Covered eviction policies, write strategies, cache patterns. Strong on diagnosis (frequency pollution, LFU staleness). Gaps: picked read-through over cache-aside for fast-changing schema (Redis doesn't do read-through natively), didn't know thundering herd risk, unfamiliar with refresh-ahead. Good cross-questions on TTL vs eviction, write perf gain."
+    },
+    {
       "topic": "sap-btp",
       "date": "2026-05-23",
       "score": 72,
       "note": "Strong instincts throughout. Gaps: Global Account scope, CF Space role names, entitlement plan vs region check, xs-security.json deployment flow. Good cross-questions on JWT, bindings, billing."
+    },
+    {
+      "topic": "sap-btp",
+      "date": "2026-05-23",
+      "score": 68,
+      "note": "Session 2. SCC concept initially confused as BTP service — needed rephrasing around cloud vs on-prem before it clicked. MTA and XSUAA coupling understood well once explained. CAP annotations correct. Cloud Connector outbound tunnel rationale still weak area."
     }
   ]
 }

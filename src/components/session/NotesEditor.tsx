@@ -58,8 +58,7 @@ export default function NotesEditor({ session }: Props) {
         />
       ) : (
         <div
-          className="w-full min-h-[24rem] border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-xl px-5 py-4 cursor-text overflow-y-auto"
-          onClick={() => setEditing(true)}
+          className="w-full min-h-[24rem] border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-xl px-5 py-4 overflow-y-auto"
         >
           {value ? (
             <div className="prose prose-sm dark:prose-invert max-w-none
@@ -76,7 +75,7 @@ export default function NotesEditor({ session }: Props) {
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
             </div>
           ) : (
-            <p className="text-slate-400 dark:text-slate-600 text-sm">Click to add notes...</p>
+            <p className="text-slate-400 dark:text-slate-600 text-sm">Click Edit to add notes...</p>
           )}
         </div>
       )}

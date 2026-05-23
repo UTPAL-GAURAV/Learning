@@ -1,6 +1,13 @@
 {
   "topics": [
     {
+      "topicSlug": "ai-fundamentals",
+      "topic": "AI Fundamentals",
+      "updatedAt": "2026-05-23T00:00:00.000Z",
+      "readinessScore": 0,
+      "sessionCount": 0
+    },
+    {
       "topicSlug": "sap-btp",
       "topic": "SAP BTP",
       "updatedAt": "2026-05-23T00:00:00.000Z",

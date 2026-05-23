@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import { dataClient } from '@/lib/dataClient'
-import { computeReadinessScore } from '@/lib/scoring'
 import { sm2Update, newCard } from '@/lib/spacedRepetition'
 import type { Session, SessionIndexData, ProgressData, WeakAreasData, SpacedRepData, ScoreHistoryData, QAItem } from '@/types'
 import { slugify } from '@/lib/utils'
@@ -28,7 +27,7 @@ function syncProgress(sessions: Session[], current: ProgressData): ProgressData 
   const topics: ProgressData['topics'] = { ...current.topics }
   sessions.forEach(s => {
     const firstTryCorrect = s.qa.filter(q => q.attempts[0]?.correct).length
-    const score = computeReadinessScore(s)
+    const score = s.readinessScore
     topics[s.topicSlug] = {
       topicSlug: s.topicSlug,
       displayName: s.topic,
@@ -133,10 +132,9 @@ export const useStore = create<AppState>((set, get) => ({
 
   updateSession: async (session: Session) => {
     const { sessions } = get()
-    const score = computeReadinessScore(session)
     const updated = sessions.map(s =>
       s.topicSlug === session.topicSlug
-        ? { ...session, readinessScore: score, updatedAt: new Date().toISOString() }
+        ? { ...session, updatedAt: new Date().toISOString() }
         : s
     )
     const updatedSession = updated.find(s => s.topicSlug === session.topicSlug)!

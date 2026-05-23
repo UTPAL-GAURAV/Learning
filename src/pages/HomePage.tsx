@@ -12,6 +12,9 @@ export default function HomePage() {
   const [showNew, setShowNew] = useState(false)
 
   const readyCount = Object.values(progress.topics).filter(t => t.readinessScore >= 75).length
+  const avgScore = sessions.length > 0
+    ? Math.round(sessions.reduce((acc, s) => acc + s.readinessScore, 0) / sessions.length)
+    : 0
   const totalQA = sessions.reduce((acc, s) => acc + s.qa.length, 0)
 
   if (!loaded) {
@@ -66,9 +69,10 @@ export default function HomePage() {
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 text-center">
               <div className="flex items-center justify-center gap-1.5 text-emerald-600 mb-1">
                 <Target size={15} />
-                <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Interview Ready</span>
+                <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Avg Readiness</span>
               </div>
-              <p className="text-3xl font-bold text-emerald-600">{readyCount}</p>
+              <p className="text-3xl font-bold text-emerald-600">{avgScore}</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{readyCount} topic{readyCount !== 1 ? 's' : ''} ≥ 75</p>
             </div>
           </div>
         )}

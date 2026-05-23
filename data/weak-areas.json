@@ -1,4 +1,12 @@
 {
-  "lastUpdated": "2026-05-23T07:42:17.192Z",
-  "weakAreas": []
+  "lastUpdated": "2026-05-23T00:00:00.000Z",
+  "weakAreas": [
+    {
+      "topic": "sap-btp",
+      "subTopic": "destination-cloud-connector",
+      "question": "Why does Cloud Connector use an outbound tunnel instead of opening inbound firewall ports? What's the security trade-off?",
+      "note": "Confused about Cloud Connector being an on-prem agent vs BTP service. Also unclear on inbound vs outbound port concepts in this context.",
+      "addedOn": "2026-05-23"
+    }
+  ]
 }

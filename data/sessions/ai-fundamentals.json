@@ -1,0 +1,23 @@
+{
+  "id": "ai-fundamentals-1748044800000",
+  "topic": "AI Fundamentals",
+  "topicSlug": "ai-fundamentals",
+  "createdAt": "2026-05-23T00:00:00.000Z",
+  "updatedAt": "2026-05-23T00:00:00.000Z",
+  "notes": "",
+  "keyConcepts": [],
+  "qa": [],
+  "readinessScore": 0,
+  "sessionCount": 0,
+  "plannedSubTopics": [
+    "LLMs — how they work, tokens, context window, temperature",
+    "RAG — retrieval-augmented generation, embeddings, vector DBs",
+    "AI Agents — what they are, tool use, planning, memory",
+    "MCP (Model Context Protocol) — what it is, how servers work, use cases",
+    "Prompt engineering — system prompts, few-shot, chain-of-thought",
+    "Vector databases — Pinecone, pgvector, Qdrant, similarity search",
+    "Agentic frameworks — LangChain, LlamaIndex, CrewAI, AutoGen",
+    "Fine-tuning vs RAG — when to use each",
+    "AI in production — latency, cost, observability, hallucination handling"
+  ]
+}
