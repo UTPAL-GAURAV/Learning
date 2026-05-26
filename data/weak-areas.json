@@ -1,12 +1,21 @@
 {
-  "lastUpdated": "2026-05-23T00:00:00.000Z",
+  "lastUpdated": "2026-05-26T00:00:00.000Z",
   "weakAreas": [
     {
+      "questionId": "q-20260523-012",
       "topic": "sap-btp",
-      "subTopic": "destination-cloud-connector",
-      "question": "Why does Cloud Connector use an outbound tunnel instead of opening inbound firewall ports? What's the security trade-off?",
-      "note": "Confused about Cloud Connector being an on-prem agent vs BTP service. Also unclear on inbound vs outbound port concepts in this context.",
-      "addedOn": "2026-05-23"
+      "question": "Why does Cloud Connector use an outbound tunnel instead of requiring S/4HANA to open an inbound port? What's the security trade-off?",
+      "wrongCount": 1,
+      "lastWrong": "2026-05-23T00:00:00.000Z",
+      "flaggedForReview": false
+    },
+    {
+      "questionId": "q-1748256000005",
+      "topic": "ai-fundamentals",
+      "question": "Multi-problem production scenario: costs tripled, latency 8s, 15% wrong answers. One sprint — what do you fix first?",
+      "wrongCount": 1,
+      "lastWrong": "2026-05-26T00:00:00.000Z",
+      "flaggedForReview": true
     }
   ]
 }

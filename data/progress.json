@@ -1,14 +1,14 @@
 {
-  "lastUpdated": "2026-05-23T07:42:17.192Z",
-  "totalSessionsCompleted": 2,
+  "lastUpdated": "2026-05-24T11:31:36.368Z",
+  "totalSessionsCompleted": 10,
   "topics": {
     "sap-btp": {
       "topicSlug": "sap-btp",
       "displayName": "SAP BTP",
-      "readinessScore": 10,
-      "totalQuestions": 10,
+      "readinessScore": 68,
+      "totalQuestions": 14,
       "correctOnFirstTry": 0,
-      "sessionCount": 1,
+      "sessionCount": 2,
       "firstStudied": "2026-05-23T00:00:00.000Z",
       "lastStudied": "2026-05-23T00:00:00.000Z",
       "status": "in-progress"
@@ -16,12 +16,100 @@
     "cache": {
       "topicSlug": "cache",
       "displayName": "Cache",
+      "readinessScore": 68,
+      "totalQuestions": 12,
+      "correctOnFirstTry": 0,
+      "sessionCount": 2,
+      "firstStudied": "2026-05-23T07:42:17.192Z",
+      "lastStudied": "2026-05-24T00:00:00.000Z",
+      "status": "in-progress"
+    },
+    "ai-fundamentals": {
+      "topicSlug": "ai-fundamentals",
+      "displayName": "AI Fundamentals",
+      "readinessScore": 45,
+      "totalQuestions": 4,
+      "correctOnFirstTry": 0,
+      "sessionCount": 1,
+      "firstStudied": "2026-05-23T00:00:00.000Z",
+      "lastStudied": "2026-05-23T00:00:00.000Z",
+      "status": "in-progress"
+    },
+    "dsa": {
+      "topicSlug": "dsa",
+      "displayName": "DSA",
       "readinessScore": 0,
       "totalQuestions": 0,
       "correctOnFirstTry": 0,
       "sessionCount": 1,
-      "firstStudied": "2026-05-23T07:42:17.192Z",
-      "lastStudied": "2026-05-23T07:42:17.192Z",
+      "firstStudied": "2026-05-24T00:00:00.000Z",
+      "lastStudied": "2026-05-24T00:00:00.000Z",
+      "status": "new"
+    },
+    "devops": {
+      "topicSlug": "devops",
+      "displayName": "DevOps",
+      "readinessScore": 0,
+      "totalQuestions": 0,
+      "correctOnFirstTry": 0,
+      "sessionCount": 1,
+      "firstStudied": "2026-05-24T10:50:17.640Z",
+      "lastStudied": "2026-05-24T10:50:17.640Z",
+      "status": "new"
+    },
+    "rest-api": {
+      "topicSlug": "rest-api",
+      "displayName": "REST API",
+      "readinessScore": 0,
+      "totalQuestions": 0,
+      "correctOnFirstTry": 0,
+      "sessionCount": 0,
+      "firstStudied": "2026-05-24T00:00:00.000Z",
+      "lastStudied": "2026-05-24T00:00:00.000Z",
+      "status": "new"
+    },
+    "java-spring-boot": {
+      "topicSlug": "java-spring-boot",
+      "displayName": "Java & Spring Boot",
+      "readinessScore": 0,
+      "totalQuestions": 0,
+      "correctOnFirstTry": 0,
+      "sessionCount": 1,
+      "firstStudied": "2026-05-24T11:27:54.918Z",
+      "lastStudied": "2026-05-24T11:27:54.918Z",
+      "status": "new"
+    },
+    "sql": {
+      "topicSlug": "sql",
+      "displayName": "SQL",
+      "readinessScore": 0,
+      "totalQuestions": 0,
+      "correctOnFirstTry": 0,
+      "sessionCount": 0,
+      "firstStudied": "2026-05-24T00:00:00.000Z",
+      "lastStudied": "2026-05-24T00:00:00.000Z",
+      "status": "new"
+    },
+    "system-design-hld": {
+      "topicSlug": "system-design-hld",
+      "displayName": "System Design (HLD)",
+      "readinessScore": 0,
+      "totalQuestions": 0,
+      "correctOnFirstTry": 0,
+      "sessionCount": 1,
+      "firstStudied": "2026-05-24T11:31:24.786Z",
+      "lastStudied": "2026-05-24T11:31:24.786Z",
+      "status": "new"
+    },
+    "system-design-lld": {
+      "topicSlug": "system-design-lld",
+      "displayName": "System Design (LLD)",
+      "readinessScore": 0,
+      "totalQuestions": 0,
+      "correctOnFirstTry": 0,
+      "sessionCount": 1,
+      "firstStudied": "2026-05-24T11:31:36.368Z",
+      "lastStudied": "2026-05-24T11:31:36.368Z",
       "status": "new"
     }
   }

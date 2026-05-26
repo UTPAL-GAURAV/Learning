@@ -1,6 +1,12 @@
 {
   "history": [
     {
+      "topic": "ai-fundamentals",
+      "date": "2026-05-23",
+      "score": 45,
+      "note": "Covered LLMs, RAG, AI Agents. Strong on ReAct loop and agent security (least privilege, HITL). Gaps: temp=0 doesn't prevent hallucination, prompt injection risk, generation-side RAG debugging. NotebookLM analogy clicked well for RAG. MCP pending."
+    },
+    {
       "topic": "cache",
       "date": "2026-05-23",
       "score": 55,
@@ -18,5 +24,23 @@
       "score": 68,
       "note": "Session 2. SCC concept initially confused as BTP service — needed rephrasing around cloud vs on-prem before it clicked. MTA and XSUAA coupling understood well once explained. CAP annotations correct. Cloud Connector outbound tunnel rationale still weak area."
     }
+    ,
+    {
+      "topic": "cache",
+      "date": "2026-05-24",
+      "score": 68,
+      "note": "Covered cache penetration, avalanche, breakdown. Strong on bloom filter reasoning, TTL jitter, logical TTL for leaderboard. Gap: didn't distinguish mutex vs logical TTL by latency impact — thought DB call frequency was the differentiator."
+    }
+    {
+      "topic": "ai-fundamentals",
+      "date": "2026-05-26",
+      "score": 68,
+      "note": "Completed all planned sub-topics. Strong: pgvector choice with correct reasoning, fine-tuning vs RAG split (RAG for facts, fine-tune for tone). Gap: production triage — only addressed hallucination, missed cost and latency as separate problems, didn't show prioritization. Good architectural instincts throughout but needs to practice multi-problem prioritization answers."
+    },
+    {
+      "topic": "sap-btp",
+      "date": "2026-05-26",
+      "score": 72,
+      "note": "Session 3. Covered Event Mesh, Integration Suite, Application Logging. Strong: Event Mesh architecture, iFlow Router pattern, Kibana debug flow with tenant/correlation ID. Gaps: missed DLQ as failure mode (got queue-full and TTL only), didn't articulate why polling is bad clearly. Good questions on push/pull model and Event Mesh isolation."
+    }
   ]
-}

@@ -1,0 +1,92 @@
+{
+  "id": "sql-1748087417001",
+  "topic": "SQL",
+  "topicSlug": "sql",
+  "createdAt": "2026-05-24T00:00:00.000Z",
+  "updatedAt": "2026-05-24T00:00:00.000Z",
+  "notes": "",
+  "keyConcepts": [],
+  "qa": [],
+  "readinessScore": 0,
+  "sessionCount": 0,
+  "pendingTopics": [
+    {
+      "subTopic": "Joins (INNER, LEFT, RIGHT, FULL, CROSS, SELF)",
+      "reason": "Pre-planned curriculum — not yet studied",
+      "deferredOn": "2026-05-24",
+      "suggestedPlacement": "start — foundation for everything else"
+    },
+    {
+      "subTopic": "Indexes (B-Tree, Hash, Composite, Covering)",
+      "reason": "Pre-planned curriculum — not yet studied",
+      "deferredOn": "2026-05-24",
+      "suggestedPlacement": "after Joins"
+    },
+    {
+      "subTopic": "Query execution & EXPLAIN ANALYZE",
+      "reason": "Pre-planned curriculum — not yet studied",
+      "deferredOn": "2026-05-24",
+      "suggestedPlacement": "after Indexes"
+    },
+    {
+      "subTopic": "Transactions & ACID",
+      "reason": "Pre-planned curriculum — not yet studied",
+      "deferredOn": "2026-05-24",
+      "suggestedPlacement": "after Query execution"
+    },
+    {
+      "subTopic": "Isolation levels (READ UNCOMMITTED → SERIALIZABLE) & dirty/phantom reads",
+      "reason": "Pre-planned curriculum — not yet studied",
+      "deferredOn": "2026-05-24",
+      "suggestedPlacement": "after Transactions & ACID"
+    },
+    {
+      "subTopic": "Window functions (ROW_NUMBER, RANK, DENSE_RANK, LAG, LEAD, PARTITION BY)",
+      "reason": "Pre-planned curriculum — not yet studied",
+      "deferredOn": "2026-05-24",
+      "suggestedPlacement": "after Isolation levels"
+    },
+    {
+      "subTopic": "CTEs (Common Table Expressions) & recursive CTEs",
+      "reason": "Pre-planned curriculum — not yet studied",
+      "deferredOn": "2026-05-24",
+      "suggestedPlacement": "after Window functions"
+    },
+    {
+      "subTopic": "Materialized Views vs Regular Views",
+      "reason": "Pre-planned curriculum — not yet studied",
+      "deferredOn": "2026-05-24",
+      "suggestedPlacement": "after CTEs"
+    },
+    {
+      "subTopic": "Normalization (1NF–3NF, BCNF) & denormalization trade-offs",
+      "reason": "Pre-planned curriculum — not yet studied",
+      "deferredOn": "2026-05-24",
+      "suggestedPlacement": "after Materialized Views"
+    },
+    {
+      "subTopic": "Locking (row-level, table-level, deadlocks, optimistic vs pessimistic)",
+      "reason": "Pre-planned curriculum — not yet studied",
+      "deferredOn": "2026-05-24",
+      "suggestedPlacement": "after Normalization"
+    },
+    {
+      "subTopic": "Partitioning (range, list, hash) & sharding",
+      "reason": "Pre-planned curriculum — not yet studied",
+      "deferredOn": "2026-05-24",
+      "suggestedPlacement": "after Locking"
+    },
+    {
+      "subTopic": "Query optimization & N+1 problem",
+      "reason": "Pre-planned curriculum — not yet studied",
+      "deferredOn": "2026-05-24",
+      "suggestedPlacement": "after Partitioning"
+    },
+    {
+      "subTopic": "SQL vs NoSQL trade-offs",
+      "reason": "Pre-planned curriculum — not yet studied",
+      "deferredOn": "2026-05-24",
+      "suggestedPlacement": "last — synthesis topic"
+    }
+  ]
+}

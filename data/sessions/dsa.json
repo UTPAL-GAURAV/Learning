@@ -1,0 +1,20 @@
+{
+  "id": "dsa-1748131200000",
+  "topic": "DSA",
+  "topicSlug": "dsa",
+  "createdAt": "2026-05-24T00:00:00.000Z",
+  "updatedAt": "2026-05-24T00:00:00.000Z",
+  "notes": "## .length vs .size() vs .length()\n\n| | Type | Used on | Example |\n|---|---|---|---|\n| `.length` | Field | Arrays only | `arr.length` |\n| `.length()` | Method | String only | `\"hello\".length()` |\n| `.size()` | Method | Collections only | `list.size()`, `map.size()`, `set.size()` |\n\nMemory hook: arrays/Strings → `.length` / `.length()`. Collections (List, Map, Set) → always `.size()`.\n\n---\n\n## PriorityQueue & Comparators\n\n| Comparator | Heap type | Top element |\n|---|---|---|\n| `new PriorityQueue<>()` | Min-heap (default) | Smallest |\n| `(a, b) -> a - b` | Min-heap | Smallest |\n| `(a, b) -> b - a` | Max-heap | Largest |\n| `Collections.reverseOrder()` | Max-heap | Largest |\n\n**How to read a comparator:** negative return → first argument has priority.\n- `a - b` negative when `a < b` → smaller values win → min-heap\n- `b - a` negative when `b < a` → larger values win → max-heap\n\n**The comparator IS what defines min/max.** There's no separate flag — you don't combine a heap type with a comparator.\n\n**Custom comparator on object field:**\n```java\nPriorityQueue<Product> pq = new PriorityQueue<>((a, b) -> a.price - b.price); // min-heap by price\n```\n\n**Top K pattern rule:**\n- Top K largest → min-heap of size K (peek = cheapest of top K = eviction candidate)\n- Top K smallest → max-heap of size K (peek = largest of top K = eviction candidate)\n\nCounter-intuitive: heap type matches what you want to *evict*, not what you want to *keep*.\n\n```java\n// Keep top 3 most expensive products\nPriorityQueue<Product> pq = new PriorityQueue<>((a, b) -> a.price - b.price); // min-heap\nif (pq.size() < 3) pq.offer(product);\nelse if (product.price > pq.peek().price) { pq.poll(); pq.offer(product); }\n```",
+  "keyConcepts": [],
+  "qa": [],
+  "readinessScore": 0,
+  "sessionCount": 1,
+  "pendingTopics": [],
+  "curriculum": [
+    "Java API fluency (PriorityQueue, collections API, .length vs .size() vs .length())",
+    "Pattern recognition (sliding window, two pointers, fast-slow, BFS/DFS, backtracking, monotonic stack, DP)",
+    "Data structure selection (HashMap vs TreeMap vs LinkedHashMap, ArrayDeque vs Stack, Set vs PriorityQueue)",
+    "Complexity intuition (recognizing target complexity before coding)",
+    "Interview communication (talking through approach out loud)"
+  ]
+}

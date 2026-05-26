@@ -3,8 +3,8 @@
   "topic": "Cache",
   "topicSlug": "cache",
   "createdAt": "2026-05-23T07:42:17.192Z",
-  "updatedAt": "2026-05-23T00:00:00.000Z",
-  "notes": "## Eviction Policies\n\n| Policy | Mechanism | Evicts | Cost | Best for |\n|---|---|---|---|---|\n| **LRU** | Doubly linked list + hashmap | Least recently used | O(1) | Recency-based access |\n| **LFU** | Frequency counter per key | Least frequently used | High (count tracking) | Skewed access patterns |\n| **FIFO** | Queue | Oldest inserted | Low | Rarely used in web caches |\n| **Random** | None | Random key | Zero | Low-overhead fallback |\n\n**Frequency pollution**: LFU accumulates counts from past traffic spikes. Stale items with high historical counts block new items \u2014 they can't be displaced by new ones. Use LRU + TTL instead.\n\n**TTL vs Eviction**: Two independent mechanisms. TTL = time-based expiry, fires regardless of memory pressure. Eviction = fires only when cache is full.\n\nReal combo: LRU policy + TTL per key. Redis config: `maxmemory-policy allkeys-lru` + `EXPIRE key 7200`.\n\n**TinyLFU (Caffeine/Java)**: probation zone (new items, FIFO-ish) \u2192 promoted to protected zone (frequent items, LRU). Items earn their way in.\n\n---\n\n## Write Strategies\n\n| Strategy | Write path | DB hit on write | Write perf gain | Risk | Use when |\n|---|---|---|---|---|---|\n| **Write-through** | Cache + DB, synchronous | Yes | No | None | Written data is frequently re-read |\n| **Write-back** | Cache only, async DB flush | Deferred | Yes | Data loss if cache crashes before flush | High write throughput, non-critical data |\n| **Write-around** | DB only, skip cache | Yes | No | Cold reads until first miss | Write-heavy data rarely re-read (logs, ledger) |\n\n**Why \"no write perf gain\" is called out for write-through only**: write-through writes to cache as part of the write path \u2014 you'd expect a speed gain, but don't get one because the DB write is still synchronous. The comparison is against write-back, which gives actual write speed via async flush.\n\n- Banking ledger \u2192 write-around (DB durability required, cache not polluted)\n- Dashboard \u2192 cache-aside with TTL matching staleness tolerance\n\n---\n\n## Cache Patterns (Read/Write)\n\n| Pattern | Who owns miss logic | Redis native? | Best for |\n|---|---|---|---|\n| **Cache-aside** (lazy loading) | App | Yes | Most use cases; fast-changing schemas |\n| **Read-through** | Cache layer (CacheLoader) | No | Stable schemas; cache as primary data layer |\n| **Write-through** (pattern) | Cache layer | No | Pairs with read-through for full cache-as-DB-layer |\n| **Refresh-ahead** | Cache layer (proactive) | No | Predictable access patterns (leaderboards, trending) |\n\nCache-aside flow: app checks cache \u2192 miss \u2192 app fetches DB \u2192 app writes cache.\n\nRead-through flow: app asks cache \u2192 miss \u2192 cache fetches DB \u2192 cache returns to app.\n\nRefresh-ahead flow: cache predicts upcoming expiry \u2192 proactively fetches DB \u2192 refreshes key before miss occurs.\n\n**Why not read-through for fast-changing schemas**: fetch logic lives in cache layer config \u2014 harder to update when the data model changes every sprint. Cache-aside keeps fetch logic in app code.\n\n**Why not \"Redis does read-through\"**: Redis is a dumb key-value store with no DB awareness. Read-through is implemented at the app layer via a library abstraction (Spring Cache, Caffeine).\n\n**Thundering herd** (cache-aside risk): on cold start or TTL expiry, many requests miss simultaneously and hammer the DB.\n- Mitigations: mutex lock on miss, probabilistic early expiry, refresh-ahead",
+  "updatedAt": "2026-05-24T00:00:00.000Z",
+  "notes": "## Eviction Policies\n\n| Policy | Mechanism | Evicts | Cost | Best for |\n|---|---|---|---|---|\n| **LRU** | Doubly linked list + hashmap | Least recently used | O(1) | Recency-based access |\n| **LFU** | Frequency counter per key | Least frequently used | High (count tracking) | Skewed access patterns |\n| **FIFO** | Queue | Oldest inserted | Low | Rarely used in web caches |\n| **Random** | None | Random key | Zero | Low-overhead fallback |\n\n**Frequency pollution**: LFU accumulates counts from past traffic spikes. Stale items with high historical counts block new items — they can't be displaced by new ones. Use LRU + TTL instead.\n\n**TTL vs Eviction**: Two independent mechanisms. TTL = time-based expiry, fires regardless of memory pressure. Eviction = fires only when cache is full.\n\nReal combo: LRU policy + TTL per key. Redis config: `maxmemory-policy allkeys-lru` + `EXPIRE key 7200`.\n\n**TinyLFU (Caffeine/Java)**: probation zone (new items, FIFO-ish) → promoted to protected zone (frequent items, LRU). Items earn their way in.\n\n---\n\n## Write Strategies\n\n| Strategy | Write path | DB hit on write | Write perf gain | Risk | Use when |\n|---|---|---|---|---|---|\n| **Write-through** | Cache + DB, synchronous | Yes | No | None | Written data is frequently re-read |\n| **Write-back** | Cache only, async DB flush | Deferred | Yes | Data loss if cache crashes before flush | High write throughput, non-critical data |\n| **Write-around** | DB only, skip cache | Yes | No | Cold reads until first miss | Write-heavy data rarely re-read (logs, ledger) |\n\n**Why \"no write perf gain\" is called out for write-through only**: write-through writes to cache as part of the write path — you'd expect a speed gain, but don't get one because the DB write is still synchronous. The comparison is against write-back, which gives actual write speed via async flush.\n\n- Banking ledger → write-around (DB durability required, cache not polluted)\n- Dashboard → cache-aside with TTL matching staleness tolerance\n\n---\n\n## Cache Patterns (Read/Write)\n\n| Pattern | Who owns miss logic | Redis native? | Best for |\n|---|---|---|---|\n| **Cache-aside** (lazy loading) | App | Yes | Most use cases; fast-changing schemas |\n| **Read-through** | Cache layer (CacheLoader) | No | Stable schemas; cache as primary data layer |\n| **Write-through** (pattern) | Cache layer | No | Pairs with read-through for full cache-as-DB-layer |\n| **Refresh-ahead** | Cache layer (proactive) | No | Predictable access patterns (leaderboards, trending) |\n\nCache-aside flow: app checks cache → miss → app fetches DB → app writes cache.\n\nRead-through flow: app asks cache → miss → cache fetches DB → cache returns to app.\n\nRefresh-ahead flow: cache predicts upcoming expiry → proactively fetches DB → refreshes key before miss occurs.\n\n**Why not read-through for fast-changing schemas**: fetch logic lives in cache layer config — harder to update when the data model changes every sprint. Cache-aside keeps fetch logic in app code.\n\n**Why not \"Redis does read-through\"**: Redis is a dumb key-value store with no DB awareness. Read-through is implemented at the app layer via a library abstraction (Spring Cache, Caffeine).\n\n**Thundering herd** (cache-aside risk): on cold start or TTL expiry, many requests miss simultaneously and hammer the DB.\n- Mitigations: mutex lock on miss, probabilistic early expiry, refresh-ahead\n\n---\n\n## Cache Invalidation\n\n| Strategy | On write | Cache state after | Next read | Use when |\n|---|---|---|---|---|\n| **TTL-based** | Nothing | Stale until expiry | Miss after TTL | Staleness tolerable |\n| **Event-driven (DELETE)** | DEL key | Key gone | Miss → fresh fetch | Need freshness, ok with miss |\n| **Event-driven (SET)** | SET key new_value | Updated | Hit → new value | Need freshness + no miss |\n| **Write-through** | SET key + DB sync | Updated | Hit → new value | Always fresh, eat write cost |\n\n**Failure modes:**\n- DB write ok, cache op fails → stale forever. Fix: always keep TTL as safety net.\n- Race condition on concurrent writes → stale value overwrites fresh one. Fix: versioned writes.\n\n**TTL rule:** always set TTL even with event-driven invalidation — it's your fallback for silent cache op failures.\n\n---\n\n## Distributed Caching\n\n**Problem:** multiple cache servers → which server holds which key?\n\n**Naive (modulo hashing):** `node = hash(key) % N`. When N changes → ~90% of keys remap → cache wipe → thundering herd.\n\n**Consistent hashing:** servers + keys placed on a virtual ring (0→2³²). Key goes clockwise to nearest server. Add/remove a node → only ~10% of keys remap (one ring segment).\n\n**Vnode fix for uneven distribution:** each physical server gets multiple positions on the ring → load spread more evenly.\n\n**Hot key problem:** one key gets disproportionate traffic → single node overwhelmed, others idle. Consistent hashing doesn't help — same key always same node.\n\nFixes:\n- Local in-process cache (reads never reach Redis)\n- Key replication: `key:1, key:2, ... key:N` → randomize reads across replicas\n- Read replicas: route reads to replica nodes\n\n**Gotcha — key replication + invalidation:** replicating a key across N nodes means N cache ops on every write. More failure surface.\n\n---\n\n## Redis vs Memcached\n\n| | Redis | Memcached |\n|---|---|---|\n| **Data structures** | Strings, hashes, lists, sets, sorted sets | Strings only |\n| **Threading** | Single-threaded | Multi-threaded |\n| **Persistence** | Yes (RDB snapshots, AOF logs) | No |\n| **Pub/Sub** | Yes | No |\n| **Clustering** | Native Redis Cluster | Manual sharding |\n| **Memory efficiency** | Slightly higher overhead | Slightly lower overhead per key |\n\n**Pick Memcached when:** pure high-throughput string caching, multi-core CPU utilization matters, no need for persistence/pub-sub/sorted sets.\n\n**Pick Redis when:** leaderboards (sorted sets), pub/sub, persistence, complex data structures, or any greenfield project.\n\n**In practice:** Redis wins almost every greenfield decision — feature gap too large, and Memcached's threading advantage rarely matters at typical scale.\n\n---\n\n## Cache Penetration, Avalanche, Breakdown\n\n| Problem | Trigger | Scale | Fix |\n|---|---|---|---|\n| **Penetration** | Requests for keys that don't exist anywhere | Per request | Bloom filter + cache null results |\n| **Avalanche** | Many keys expire simultaneously | Many keys | TTL jitter (`TTL + random(0, N)`) |\n| **Breakdown** | One hot key expires | Single key | Mutex lock or Logical TTL |\n\n**Cache Penetration:**\n- Bot/attacker requests non-existent IDs → every request bypasses cache, hits DB\n- Cache-null fix: store `key → null` with short TTL. Works for repeated same-key attacks, not random IDs.\n- Bloom filter fix: sits before cache, registers every written key. If filter says NO → return 404 immediately, never touch cache/DB.\n- Bloom filter is append-only — deleted keys stay registered (false positives). Acceptable trade-off.\n- Production: bloom filter + cache-null as layered defense.\n\n**Cache Avalanche:**\n- Bulk cache load → all keys get same TTL → all expire together → DB hammered\n- Fix: `TTL = base_ttl + random(0, N)` — spread expiry over a window\n- On existing keys: use Redis `EXPIRE key new_ttl`. Use `SCAN` (not `KEYS *`) to iterate — non-blocking.\n- Standby replica helps with availability but doesn't fix avalanche (same TTLs on replica too).\n- Cache warming reduces misses but TTL still needed: safety net for cold keys, warming failures, memory pressure.\n\n**Cache Breakdown:**\n- Single hot key expires → 10k concurrent misses → 10k identical DB queries\n- Mutex lock: first miss acquires lock, fetches DB, repopulates. Others wait. Consistent data, latency spike on expiry.\n- Logical TTL: store expiry inside value, never set real TTL. On stale read → async background refresh, serve stale in meantime. No latency spike, briefly stale data.\n- **Leaderboard → Logical TTL** (staleness ok, no latency spike for 50k req/sec)\n- **Bank balance → Mutex** (consistency required, latency acceptable)",
   "keyConcepts": [
     "LRU",
     "LFU",
@@ -20,21 +20,30 @@
     "write-through pattern",
     "refresh-ahead",
     "thundering herd",
-    "TinyLFU"
+    "TinyLFU",
+    "cache invalidation",
+    "event-driven invalidation",
+    "consistent hashing",
+    "modulo hashing",
+    "virtual ring",
+    "vnodes",
+    "hot key problem",
+    "key replication",
+    "cache penetration",
+    "cache avalanche",
+    "cache breakdown",
+    "bloom filter",
+    "TTL jitter",
+    "mutex lock",
+    "logical TTL"
   ],
   "qa": [
     {
       "id": "q-1748044800001",
       "question": "You're building a news feed cache. Articles from the last 2 hours get hammered, then traffic drops. Your 10k-slot cache has a high eviction rate and stale articles stay while new ones keep getting evicted. What's the cause and which eviction policy do you pick?",
-      "answer": "Cause: LFU frequency pollution. Stale articles built up high frequency counts when trending \u2014 new articles can't displace them. Fix: switch to LRU (recency-based). Pair with TTL (e.g. 2h) so stale articles expire regardless of memory pressure. LRU handles memory pressure; TTL handles freshness.",
+      "answer": "Cause: LFU frequency pollution. Stale articles built up high frequency counts when trending — new articles can't displace them. Fix: switch to LRU (recency-based). Pair with TTL (e.g. 2h) so stale articles expire regardless of memory pressure. LRU handles memory pressure; TTL handles freshness.",
       "difficulty": "medium",
-      "tags": [
-        "eviction",
-        "LRU",
-        "LFU",
-        "TTL",
-        "news-feed"
-      ],
+      "tags": ["eviction", "LRU", "LFU", "TTL", "news-feed"],
       "attempts": [],
       "wrongCount": 0,
       "lastReviewed": null
@@ -42,13 +51,9 @@
     {
       "id": "q-1748044800002",
       "question": "When does TTL fire vs when does an eviction policy fire? Can they conflict?",
-      "answer": "TTL fires independently of memory \u2014 Redis uses lazy expiry (on access) + active sampling (background). Eviction fires only when cache is full and a new item needs space. They don't conflict \u2014 TTL handles freshness, eviction handles memory pressure. Both can run simultaneously.",
+      "answer": "TTL fires independently of memory — Redis uses lazy expiry (on access) + active sampling (background). Eviction fires only when cache is full and a new item needs space. They don't conflict — TTL handles freshness, eviction handles memory pressure. Both can run simultaneously.",
       "difficulty": "easy",
-      "tags": [
-        "TTL",
-        "eviction",
-        "Redis"
-      ],
+      "tags": ["TTL", "eviction", "Redis"],
       "attempts": [],
       "wrongCount": 0,
       "lastReviewed": null
@@ -56,15 +61,9 @@
     {
       "id": "q-1748044800003",
       "question": "You're building a banking transaction ledger. Writes are frequent, data loss is unacceptable. Dashboard reads can tolerate 5s staleness. Which write strategy for the ledger, which for the dashboard?",
-      "answer": "Ledger: write-around. Writes go directly to DB (durability guaranteed), cache not polluted with rarely-re-read transaction entries. Dashboard: cache-aside with 5s TTL. Read from cache, miss \u2192 fetch from DB, populate cache. Write-back is eliminated immediately \u2014 async DB flush risks data loss.",
+      "answer": "Ledger: write-around. Writes go directly to DB (durability guaranteed), cache not polluted with rarely-re-read transaction entries. Dashboard: cache-aside with 5s TTL. Read from cache, miss → fetch from DB, populate cache. Write-back is eliminated immediately — async DB flush risks data loss.",
       "difficulty": "medium",
-      "tags": [
-        "write-around",
-        "write-back",
-        "write-through",
-        "banking",
-        "TTL"
-      ],
+      "tags": ["write-around", "write-back", "write-through", "banking", "TTL"],
       "attempts": [],
       "wrongCount": 0,
       "lastReviewed": null
@@ -72,13 +71,9 @@
     {
       "id": "q-1748044800004",
       "question": "Why does write-through have 'no write performance gain' but write-around doesn't get that label, even though both hit the DB on every write?",
-      "answer": "The comparison is vs write-back. Write-through writes to cache as part of the write path \u2014 you'd expect a speed gain, but you don't get one because DB write is still synchronous. Write-around doesn't attempt to cache writes at all, so there's no false expectation to correct. Write-back is the only strategy with actual write performance gain (async DB flush).",
+      "answer": "The comparison is vs write-back. Write-through writes to cache as part of the write path — you'd expect a speed gain, but you don't get one because DB write is still synchronous. Write-around doesn't attempt to cache writes at all, so there's no false expectation to correct. Write-back is the only strategy with actual write performance gain (async DB flush).",
       "difficulty": "medium",
-      "tags": [
-        "write-through",
-        "write-around",
-        "write-back"
-      ],
+      "tags": ["write-through", "write-around", "write-back"],
       "attempts": [],
       "wrongCount": 0,
       "lastReviewed": null
@@ -86,14 +81,9 @@
     {
       "id": "q-1748044800005",
       "question": "Startup, 2 engineers, data model changes every sprint, Spring Boot + Redis, read-heavy user profiles. Cache-aside or read-through?",
-      "answer": "Cache-aside. Redis doesn't natively support read-through \u2014 it has no DB awareness. Read-through requires a CacheLoader abstraction (Spring Cache, Caffeine). With fast-changing schemas, fetch logic in cache layer config is harder to update than fetch logic in app code. Cache-aside keeps it in the service. Main risk: thundering herd on cold start or TTL expiry.",
+      "answer": "Cache-aside. Redis doesn't natively support read-through — it has no DB awareness. Read-through requires a CacheLoader abstraction (Spring Cache, Caffeine). With fast-changing schemas, fetch logic in cache layer config is harder to update than fetch logic in app code. Cache-aside keeps it in the service. Main risk: thundering herd on cold start or TTL expiry.",
       "difficulty": "medium",
-      "tags": [
-        "cache-aside",
-        "read-through",
-        "Redis",
-        "Spring Boot"
-      ],
+      "tags": ["cache-aside", "read-through", "Redis", "Spring Boot"],
       "attempts": [],
       "wrongCount": 0,
       "lastReviewed": null
@@ -103,16 +93,73 @@
       "question": "What is refresh-ahead and when do you use it over read-through?",
       "answer": "Refresh-ahead: cache proactively refreshes a key before it expires, based on predicted access patterns. Avoids the miss entirely. Use when access is predictable and a cache miss would be expensive (e.g. leaderboard refreshed every 30s, trending topics). Read-through waits for a miss to happen. Refresh-ahead eliminates the miss at the cost of possibly refreshing data that won't be accessed.",
       "difficulty": "hard",
-      "tags": [
-        "refresh-ahead",
-        "read-through",
-        "cache-patterns"
-      ],
+      "tags": ["refresh-ahead", "read-through", "cache-patterns"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-1748131200001",
+      "question": "Your e-commerce product price is updated in the DB. Within seconds customers see old prices and check out at the wrong amount. TTL is 1 hour. How do you fix this and what are the failure modes?",
+      "answer": "Fix: event-driven invalidation — on price write, immediately DEL (or SET) the product cache key. Don't wait for TTL. Failure modes: (1) DB write ok but cache op fails → stale forever without TTL safety net; (2) concurrent writes race condition → stale value overwrites fresh one, fix with versioned writes. Always keep TTL even with event-driven invalidation as fallback.",
+      "difficulty": "medium",
+      "tags": ["cache-invalidation", "event-driven", "TTL", "race-condition"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-1748131200002",
+      "question": "You have a 5-node Redis cluster. A celebrity post goes viral — that single cache key gets 500k reads/sec. Two nodes are at 100% CPU, three are idle. What's the problem and how do you fix it?",
+      "answer": "Hot key problem. Consistent hashing always routes the same key to the same node — it doesn't help here. Fix: key replication — store same value as key:1, key:2...key:5, randomize reads across all nodes. Trade-off: on write/invalidation, must update all replica keys (N cache ops instead of 1, more failure surface). Alternative: local in-process cache on each app server so reads never reach Redis.",
+      "difficulty": "hard",
+      "tags": ["hot-key", "consistent-hashing", "key-replication", "distributed-cache"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-1748131200003",
+      "question": "You have 10 cache nodes using modulo hashing. You need to add 2 more nodes for scale. What happens and how does consistent hashing change that outcome?",
+      "answer": "Modulo hashing: N changes from 10 to 12 → hash(key) % N remaps ~90% of keys to different nodes → near-total cache wipe → thundering herd on DB. Consistent hashing: nodes on a ring, key goes clockwise to nearest node. Adding 2 nodes only remaps the keys in those 2 new ring segments (~16% of keys). Everything else untouched.",
+      "difficulty": "medium",
+      "tags": ["consistent-hashing", "modulo-hashing", "distributed-cache", "thundering-herd"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-1748131200004",
+      "question": "Your user profile API is getting 5k req/sec for user IDs that don't exist in DB. Cache miss rate is 100%, DB is struggling. Cache-null or bloom filter — which and why? What if you use both?",
+      "answer": "Bloom filter wins for random ID attacks — attacker uses new IDs each time, cache-null never gets a hit. Bloom filter catches non-existent keys before cache/DB. Cache-null helps for repeated same-key attacks (stores null with TTL, serves from cache). Production: use both — bloom filter as first gate, cache-null as fallback for keys that pass filter but still return null from DB. Bloom filter is append-only — deleted keys stay registered (acceptable false positive).",
+      "difficulty": "hard",
+      "tags": ["cache-penetration", "bloom-filter", "cache-null"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-1748131200005",
+      "question": "Black Friday: 500k product keys bulk-loaded into Redis with TTL=86400s. 24 hours later all expire simultaneously, DB falls over. You have 10 minutes. What do you do?",
+      "answer": "Run a script using Redis SCAN (not KEYS * — blocks Redis) to iterate all product keys and reset TTL with jitter: EXPIRE key (current_ttl + random(0, 7200)). This spreads expiry over a 2-hour window instead of all at once. Root fix for next time: always set TTL with jitter at write time. Cache warming helps reduce misses but TTL jitter is the core fix for avalanche.",
+      "difficulty": "medium",
+      "tags": ["cache-avalanche", "TTL-jitter", "Redis", "SCAN"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-1748131200006",
+      "question": "Global leaderboard key, 50k req/sec, expires every 60s (expensive aggregation). Every 60s DB spikes to 100% CPU. Mutex lock or Logical TTL?",
+      "answer": "Logical TTL. Mutex would block 49,999 requests waiting for the lock to be released every 60s — latency spike at scale. Logical TTL: store expiry timestamp inside the value, never set real TTL. On stale read, trigger async background refresh and serve stale data immediately. Zero latency spike, leaderboard staleness of 1-2s is acceptable. Use mutex when consistency is required (e.g. bank balance).",
+      "difficulty": "hard",
+      "tags": ["cache-breakdown", "logical-TTL", "mutex", "hot-key"],
       "attempts": [],
       "wrongCount": 0,
       "lastReviewed": null
     }
   ],
-  "readinessScore": 55,
-  "sessionCount": 1
+  "readinessScore": 68,
+  "sessionCount": 2,
+  "pendingTopics": []
 }
