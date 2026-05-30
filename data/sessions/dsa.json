@@ -10,6 +10,16 @@
   "readinessScore": 0,
   "sessionCount": 1,
   "pendingTopics": [],
+  "syllabusTopics": [
+    "Java API fluency (PriorityQueue, collections API, .length vs .size() vs .length())",
+    "Pattern recognition (sliding window, two pointers, fast-slow, BFS/DFS, backtracking, monotonic stack, DP)",
+    "Data structure selection (HashMap vs TreeMap vs LinkedHashMap, ArrayDeque vs Stack, Set vs PriorityQueue)",
+    "Complexity intuition (recognizing target complexity before coding)",
+    "Interview communication (talking through approach out loud)"
+  ],
+  "coveredTopics": [
+    "Java API fluency (PriorityQueue, collections API, .length vs .size() vs .length())"
+  ],
   "curriculum": [
     "Java API fluency (PriorityQueue, collections API, .length vs .size() vs .length())",
     "Pattern recognition (sliding window, two pointers, fast-slow, BFS/DFS, backtracking, monotonic stack, DP)",

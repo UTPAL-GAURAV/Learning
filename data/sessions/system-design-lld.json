@@ -8,5 +8,17 @@
   "keyConcepts": [],
   "qa": [],
   "readinessScore": 0,
-  "sessionCount": 1
+  "sessionCount": 1,
+  "syllabusTopics": [
+    "SOLID principles",
+    "Design patterns — Creational (Singleton, Factory, Builder)",
+    "Design patterns — Structural (Adapter, Decorator, Facade, Proxy)",
+    "Design patterns — Behavioral (Strategy, Observer, Command, Template Method)",
+    "Class diagram design — relationships, aggregation, composition",
+    "Designing real classes (parking lot, elevator, library, chess, ATM)",
+    "Concurrency in OOP — thread-safe singleton, concurrent queue",
+    "Interface vs abstract class — when to use each"
+  ],
+  "coveredTopics": [],
+  "pendingTopics": []
 }

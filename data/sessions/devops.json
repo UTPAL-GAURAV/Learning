@@ -8,5 +8,18 @@
   "keyConcepts": [],
   "qa": [],
   "readinessScore": 0,
-  "sessionCount": 1
+  "sessionCount": 1,
+  "syllabusTopics": [
+    "CI/CD pipelines (Jenkins, GitHub Actions, stages)",
+    "Docker — images, containers, Dockerfile, multi-stage builds",
+    "Kubernetes — pods, deployments, services, ingress, HPA",
+    "Infrastructure as Code (Terraform, Helm)",
+    "Monitoring & observability (Prometheus, Grafana, ELK)",
+    "GitOps & deployment strategies (blue-green, canary, rolling)",
+    "Cloud fundamentals (AWS/GCP — compute, storage, networking)",
+    "Secrets management (Vault, K8s secrets)",
+    "Container registry & image security"
+  ],
+  "coveredTopics": [],
+  "pendingTopics": []
 }

@@ -16,6 +16,70 @@
       "wrongCount": 1,
       "lastWrong": "2026-05-26T00:00:00.000Z",
       "flaggedForReview": true
+    },
+    {
+      "questionId": "q-rest-1748304006",
+      "topic": "rest-api",
+      "question": "Client calls POST /orders. Network timeout — they retry. Two orders now exist. How do you prevent this?",
+      "wrongCount": 1,
+      "lastWrong": "2026-05-26T00:00:00.000Z",
+      "flaggedForReview": true
+    },
+    {
+      "questionId": "q-rest-1748304004",
+      "topic": "rest-api",
+      "question": "Your API rate-limits a client. What status code and what must the response include?",
+      "wrongCount": 1,
+      "lastWrong": "2026-05-26T00:00:00.000Z",
+      "flaggedForReview": true
+    },
+    {
+      "questionId": "q-rest-1748304007",
+      "topic": "rest-api",
+      "question": "API returns {\"error\": \"Something went wrong\"} on failures. Why is this bad and what should it look like?",
+      "wrongCount": 1,
+      "lastWrong": "2026-05-26T00:00:00.000Z",
+      "flaggedForReview": true
+    },
+    {
+      "questionId": "q-rest-1748304008",
+      "topic": "rest-api",
+      "question": "Mobile app screens need very different data shapes. Teammate pushes REST. Do you agree?",
+      "wrongCount": 1,
+      "lastWrong": "2026-05-26T00:00:00.000Z",
+      "flaggedForReview": false
+    },
+    {
+      "questionId": "q-1748131200001",
+      "topic": "cache",
+      "question": "Your e-commerce product price is updated in the DB. Within seconds customers see old prices. TTL is 1 hour. How do you fix this and what are the failure modes?",
+      "wrongCount": 1,
+      "lastWrong": "2026-05-26T00:00:00.000Z",
+      "flaggedForReview": true
+    },
+    {
+      "questionId": "q-1748131200005",
+      "topic": "cache",
+      "question": "Black Friday: 500k product keys bulk-loaded with TTL=86400s. 24 hours later all expire simultaneously. You have 10 minutes. What do you do?",
+      "wrongCount": 1,
+      "lastWrong": "2026-05-26T00:00:00.000Z",
+      "flaggedForReview": true
+    },
+    {
+      "questionId": "q-1748131200006",
+      "topic": "cache",
+      "question": "Global leaderboard key, 50k req/sec, expires every 60s. Every 60s DB spikes to 100% CPU. Mutex lock or Logical TTL?",
+      "wrongCount": 1,
+      "lastWrong": "2026-05-26T00:00:00.000Z",
+      "flaggedForReview": true
+    },
+    {
+      "questionId": "q-1748044800005",
+      "topic": "cache",
+      "question": "Startup, fast-changing schema every sprint, Spring Boot + Redis, read-heavy. Cache-aside or read-through?",
+      "wrongCount": 1,
+      "lastWrong": "2026-05-26T00:00:00.000Z",
+      "flaggedForReview": false
     }
   ]
 }

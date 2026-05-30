@@ -19,6 +19,10 @@ export default function TopicCard({ session }: Props) {
   const scoreColor = getScoreColor(score)
   const scoreBg = getScoreBg(score)
 
+  const syllabusTotal = session.syllabusTopics?.length ?? 0
+  const syllabusCovered = session.coveredTopics?.length ?? 0
+  const syllabusProgress = syllabusTotal > 0 ? Math.round((syllabusCovered / syllabusTotal) * 100) : 0
+
   const dueCards = session.qa.filter(q => {
     const card = spacedRep.cards.find(c => c.questionId === q.id)
     if (!card) return false
@@ -56,8 +60,28 @@ export default function TopicCard({ session }: Props) {
           <span className={`text-2xl font-bold ${scoreColor}`}>{score}</span>
           <span className="text-xs text-slate-400">/100</span>
         </div>
-        <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-          <div className={`h-full rounded-full transition-all ${scoreBg}`} style={{ width: `${score}%` }} />
+
+        {/* Readiness/confidence bar */}
+        <div className="flex items-center gap-2 mb-1.5">
+          <span className="text-xs text-slate-400 w-16 shrink-0">Readiness</span>
+          <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+            <div className={`h-full rounded-full transition-all ${scoreBg}`} style={{ width: `${score}%` }} />
+          </div>
+          <span className="text-xs text-slate-400 w-8 text-right">{score}%</span>
+        </div>
+
+        {/* Syllabus coverage bar */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-400 w-16 shrink-0">Coverage</span>
+          <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all bg-violet-400 dark:bg-violet-500"
+              style={{ width: `${syllabusProgress}%` }}
+            />
+          </div>
+          <span className="text-xs text-slate-400 w-8 text-right">
+            {syllabusTotal > 0 ? `${syllabusCovered}/${syllabusTotal}` : '—'}
+          </span>
         </div>
       </div>
 

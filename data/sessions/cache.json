@@ -44,7 +44,7 @@
       "answer": "Cause: LFU frequency pollution. Stale articles built up high frequency counts when trending — new articles can't displace them. Fix: switch to LRU (recency-based). Pair with TTL (e.g. 2h) so stale articles expire regardless of memory pressure. LRU handles memory pressure; TTL handles freshness.",
       "difficulty": "medium",
       "tags": ["eviction", "LRU", "LFU", "TTL", "news-feed"],
-      "attempts": [],
+      "attempts": [{"timestamp": "2026-05-26T00:00:00.000Z", "correct": true}],
       "wrongCount": 0,
       "lastReviewed": null
     },
@@ -84,7 +84,7 @@
       "answer": "Cache-aside. Redis doesn't natively support read-through — it has no DB awareness. Read-through requires a CacheLoader abstraction (Spring Cache, Caffeine). With fast-changing schemas, fetch logic in cache layer config is harder to update than fetch logic in app code. Cache-aside keeps it in the service. Main risk: thundering herd on cold start or TTL expiry.",
       "difficulty": "medium",
       "tags": ["cache-aside", "read-through", "Redis", "Spring Boot"],
-      "attempts": [],
+      "attempts": [{"timestamp": "2026-05-26T00:00:00.000Z", "correct": false}],
       "wrongCount": 0,
       "lastReviewed": null
     },
@@ -104,7 +104,7 @@
       "answer": "Fix: event-driven invalidation — on price write, immediately DEL (or SET) the product cache key. Don't wait for TTL. Failure modes: (1) DB write ok but cache op fails → stale forever without TTL safety net; (2) concurrent writes race condition → stale value overwrites fresh one, fix with versioned writes. Always keep TTL even with event-driven invalidation as fallback.",
       "difficulty": "medium",
       "tags": ["cache-invalidation", "event-driven", "TTL", "race-condition"],
-      "attempts": [],
+      "attempts": [{"timestamp": "2026-05-26T00:00:00.000Z", "correct": false}],
       "wrongCount": 0,
       "lastReviewed": null
     },
@@ -115,6 +115,7 @@
       "difficulty": "hard",
       "tags": ["hot-key", "consistent-hashing", "key-replication", "distributed-cache"],
       "attempts": [],
+
       "wrongCount": 0,
       "lastReviewed": null
     },
@@ -124,7 +125,7 @@
       "answer": "Modulo hashing: N changes from 10 to 12 → hash(key) % N remaps ~90% of keys to different nodes → near-total cache wipe → thundering herd on DB. Consistent hashing: nodes on a ring, key goes clockwise to nearest node. Adding 2 nodes only remaps the keys in those 2 new ring segments (~16% of keys). Everything else untouched.",
       "difficulty": "medium",
       "tags": ["consistent-hashing", "modulo-hashing", "distributed-cache", "thundering-herd"],
-      "attempts": [],
+      "attempts": [{"timestamp": "2026-05-26T00:00:00.000Z", "correct": true}],
       "wrongCount": 0,
       "lastReviewed": null
     },
@@ -134,7 +135,7 @@
       "answer": "Bloom filter wins for random ID attacks — attacker uses new IDs each time, cache-null never gets a hit. Bloom filter catches non-existent keys before cache/DB. Cache-null helps for repeated same-key attacks (stores null with TTL, serves from cache). Production: use both — bloom filter as first gate, cache-null as fallback for keys that pass filter but still return null from DB. Bloom filter is append-only — deleted keys stay registered (acceptable false positive).",
       "difficulty": "hard",
       "tags": ["cache-penetration", "bloom-filter", "cache-null"],
-      "attempts": [],
+      "attempts": [{"timestamp": "2026-05-26T00:00:00.000Z", "correct": true}],
       "wrongCount": 0,
       "lastReviewed": null
     },
@@ -144,7 +145,7 @@
       "answer": "Run a script using Redis SCAN (not KEYS * — blocks Redis) to iterate all product keys and reset TTL with jitter: EXPIRE key (current_ttl + random(0, 7200)). This spreads expiry over a 2-hour window instead of all at once. Root fix for next time: always set TTL with jitter at write time. Cache warming helps reduce misses but TTL jitter is the core fix for avalanche.",
       "difficulty": "medium",
       "tags": ["cache-avalanche", "TTL-jitter", "Redis", "SCAN"],
-      "attempts": [],
+      "attempts": [{"timestamp": "2026-05-26T00:00:00.000Z", "correct": false}],
       "wrongCount": 0,
       "lastReviewed": null
     },
@@ -154,12 +155,32 @@
       "answer": "Logical TTL. Mutex would block 49,999 requests waiting for the lock to be released every 60s — latency spike at scale. Logical TTL: store expiry timestamp inside the value, never set real TTL. On stale read, trigger async background refresh and serve stale data immediately. Zero latency spike, leaderboard staleness of 1-2s is acceptable. Use mutex when consistency is required (e.g. bank balance).",
       "difficulty": "hard",
       "tags": ["cache-breakdown", "logical-TTL", "mutex", "hot-key"],
-      "attempts": [],
+      "attempts": [{"timestamp": "2026-05-26T00:00:00.000Z", "correct": false}],
       "wrongCount": 0,
       "lastReviewed": null
     }
   ],
-  "readinessScore": 68,
+  "readinessScore": 64,
   "sessionCount": 2,
+  "syllabusTopics": [
+    "Eviction policies (LRU, LFU, FIFO)",
+    "Write strategies (write-through, write-back, write-around)",
+    "Cache patterns (cache-aside, read-through, refresh-ahead)",
+    "Cache invalidation strategies",
+    "Cache penetration, avalanche, breakdown",
+    "Distributed caching & consistent hashing",
+    "Redis vs Memcached",
+    "Cache warming & cold start",
+    "TTL design & jitter"
+  ],
+  "coveredTopics": [
+    "Eviction policies (LRU, LFU, FIFO)",
+    "Write strategies (write-through, write-back, write-around)",
+    "Cache patterns (cache-aside, read-through, refresh-ahead)",
+    "Cache invalidation strategies",
+    "Cache penetration, avalanche, breakdown",
+    "Distributed caching & consistent hashing",
+    "Redis vs Memcached"
+  ],
   "pendingTopics": []
 }

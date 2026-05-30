@@ -9,6 +9,22 @@
   "qa": [],
   "readinessScore": 0,
   "sessionCount": 0,
+  "syllabusTopics": [
+    "Joins (INNER, LEFT, RIGHT, FULL, CROSS, SELF)",
+    "Indexes (B-Tree, Hash, Composite, Covering)",
+    "Query execution & EXPLAIN ANALYZE",
+    "Transactions & ACID",
+    "Isolation levels & dirty/phantom reads",
+    "Window functions (ROW_NUMBER, RANK, LAG, LEAD, PARTITION BY)",
+    "CTEs & recursive CTEs",
+    "Materialized Views vs Regular Views",
+    "Normalization & denormalization trade-offs",
+    "Locking (row-level, table-level, deadlocks, optimistic vs pessimistic)",
+    "Partitioning & sharding",
+    "Query optimization & N+1 problem",
+    "SQL vs NoSQL trade-offs"
+  ],
+  "coveredTopics": [],
   "pendingTopics": [
     {
       "subTopic": "Joins (INNER, LEFT, RIGHT, FULL, CROSS, SELF)",

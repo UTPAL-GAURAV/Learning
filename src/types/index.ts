@@ -25,6 +25,8 @@ export interface Session {
   qa: QAItem[]
   readinessScore: number
   sessionCount: number
+  syllabusTopics: string[]
+  coveredTopics: string[]
 }
 
 export interface TopicProgress {
@@ -83,6 +85,7 @@ export interface SessionIndexEntry {
   updatedAt: string
   readinessScore: number
   sessionCount: number
+  syllabusProgress: number
 }
 
 export interface SessionIndexData {

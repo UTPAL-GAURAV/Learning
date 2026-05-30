@@ -3,11 +3,127 @@
   "topic": "REST API",
   "topicSlug": "rest-api",
   "createdAt": "2026-05-24T00:00:00.000Z",
-  "updatedAt": "2026-05-24T00:00:00.000Z",
-  "notes": "",
-  "keyConcepts": [],
-  "qa": [],
-  "readinessScore": 0,
-  "sessionCount": 0,
+  "updatedAt": "2026-05-26T00:00:00.000Z",
+  "notes": "## Idempotency Keys\n**What:** Client-generated UUID in `Idempotency-Key` header. Server stores `{key → response}` in DB. Duplicate key → return stored response, skip execution.\n\n**Flow:** `Client generates UUID → sends with POST → server stores key+response in DB → on retry, key found → return stored response verbatim`\n\n**Rules:**\n- Client generates UUID, never the server\n- Store in **DB not cache** — cache eviction or restart loses the key → duplicate charge\n- TTL = retry window (24h standard, Stripe uses 24h)\n- Return the **exact stored response** — not a fresh 200, client needs the original order ID / reference\n- TTL too short → legitimate retries create duplicates; too long → table bloat\n\n## Rate Limiting Headers\n**On 429 Too Many Requests, always include:**\n```\nRetry-After: 30              ← seconds until retry allowed (RFC 6585, mandatory)\nX-RateLimit-Limit: 1000      ← total requests allowed in window\nX-RateLimit-Remaining: 0     ← requests left\nX-RateLimit-Reset: 1748390400 ← Unix timestamp of window reset\n```\n**Thundering herd trap:** Missing `Retry-After` → all rate-limited clients retry immediately → synchronized burst → load spikes *because* of the rate limiter. Self-inflicted DDoS.\n\n## Error Response Design — RFC 7807\n**Problem:** `{\"error\": \"Something went wrong\"}` is useless for 4xx (client can't act) and 5xx (can't trace in prod).\n\n**RFC 7807 shape:**\n```json\n{ \"type\": \"uri-error-code\", \"title\": \"Human title\", \"status\": 402, \"detail\": \"Instance-specific context\", \"traceId\": \"abc-123\", \"timestamp\": \"...\" }\n```\n- `traceId` is **mandatory on 5xx** — ties client error report → log line → root cause\n- Spring Boot: `MDC.put(\"traceId\", ...)` in request filter, pull in `@ExceptionHandler`\n- Never expose internals in `detail` on 5xx, but always include traceId\n\n## API Versioning\n| Strategy | Example | Trade-off |\n|---|---|---|\n| URI | `/v2/users` | Most common, easiest to route/cache/document |\n| Header | `Accept: application/vnd.myapi.v2+json` | Clean URIs, hard to test in browser |\n| Query param | `/users?version=2` | Easy to test, easy to accidentally omit |\n\n**Deprecation (RFC 8594) — on every v1 response:**\n```\nDeprecation: true\nSunset: Sat, 31 Dec 2026 23:59:59 GMT\n```\n- Every call, not once. Machine-readable — good HTTP clients auto-alert teams.\n- 3–6 month window for mobile clients you don't control.\n- Monitor v1 traffic → decommission when near zero.\n\n## GraphQL vs REST vs BFF\n| Situation | Pick |\n|---|---|\n| Many clients, divergent data shapes, team can absorb ops | GraphQL |\n| 2–3 client types, REST simplicity preferred | BFF |\n| Single client or similar shapes | Plain REST |\n| Third-party partner needing fixed contract | Versioned REST — GraphQL schema is unstable for partners |\n\n**BFF:** Separate service per client type. Aggregates internal microservices, shapes response for that client. Internal services stay generic. Client-specific logic lives in BFF, not in core services.",
+  "keyConcepts": [
+    "REST URI design — nouns not verbs",
+    "HTTP methods: GET (safe+idempotent), POST (neither), PUT (idempotent), PATCH (partial update), DELETE (idempotent)",
+    "Idempotency — state guarantee, not response code guarantee",
+    "Idempotency keys — UUID header, server deduplicates on retry",
+    "Rate limiting — 429 + Retry-After + X-RateLimit-* headers",
+    "Pagination — offset vs cursor vs keyset",
+    "API versioning — URI (/v2), header (Accept), query param (?version=)",
+    "Deprecation headers — Deprecation: true, Sunset: <date> (RFC 8594)",
+    "Error design — RFC 7807 Problem Details",
+    "GraphQL trade-offs — N+1, no HTTP caching, schema overhead",
+    "BFF pattern — Backend for Frontend"
+  ],
+  "qa": [
+    {
+      "id": "q-rest-1748304001",
+      "question": "Your teammate uses POST /users/{id}/update-email to update a user's email. What's wrong and what would you use instead?",
+      "answer": "Two issues: (1) verb in URI — REST URIs should be nouns/resources, not actions. (2) POST is for creating resources, not partial updates. Use PATCH /users/{id} with body {\"email\": \"updated@email.com\"}. PUT replaces the full resource; PATCH is for partial updates.",
+      "difficulty": "easy",
+      "tags": ["http-methods", "uri-design"],
+      "attempts": [{"timestamp": "2026-05-26T00:00:00.000Z", "correct": true}],
+      "wrongCount": 0,
+      "lastReviewed": "2026-05-26T00:00:00.000Z"
+    },
+    {
+      "id": "q-rest-1748304002",
+      "question": "DELETE /orders/{id} is called twice — order is already gone on the second call. What status do you return and why?",
+      "answer": "Both 204 and 404 are valid. DELETE is idempotent — server state is the same after both calls. Idempotency is about state, not response code. Most APIs return 204 so clients don't need to branch on 204 vs 404.",
+      "difficulty": "medium",
+      "tags": ["idempotency", "http-methods", "status-codes"],
+      "attempts": [{"timestamp": "2026-05-26T00:00:00.000Z", "correct": false}],
+      "wrongCount": 1,
+      "lastReviewed": "2026-05-26T00:00:00.000Z"
+    },
+    {
+      "id": "q-rest-1748304003",
+      "question": "Six months after launching a public API consumed by mobile apps, you need a breaking schema change. How do you handle it without breaking existing clients?",
+      "answer": "URI versioning: /v1/users → /v2/users. Keep v1 live for 3–6 month sunset period. Signal deprecation via HTTP headers: Deprecation: true and Sunset: <date> (RFC 8594) — not a code annotation. Three strategies: URI (/v2/), header (Accept: application/vnd.api.v2+json), query param (?version=2). URI is most common; header keeps clean URIs.",
+      "difficulty": "medium",
+      "tags": ["versioning", "breaking-changes", "rfc-8594"],
+      "attempts": [{"timestamp": "2026-05-26T00:00:00.000Z", "correct": false}, {"timestamp": "2026-05-30T00:00:00.000Z", "correct": true}],
+      "wrongCount": 1,
+      "lastReviewed": "2026-05-30T00:00:00.000Z"
+    },
+    {
+      "id": "q-rest-1748304004",
+      "question": "Your API rate-limits a client hitting 10k req/sec. What status code and what must the response include?",
+      "answer": "429 Too Many Requests. Must include: Retry-After: <seconds> (RFC 6585, mandatory), X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset. Without Retry-After, clients retry immediately → thundering herd. The rate limiter becomes its own DDoS vector.",
+      "difficulty": "medium",
+      "tags": ["rate-limiting", "http-headers", "thundering-herd"],
+      "attempts": [{"timestamp": "2026-05-26T00:00:00.000Z", "correct": false}, {"timestamp": "2026-05-30T00:00:00.000Z", "correct": true}],
+      "wrongCount": 1,
+      "lastReviewed": "2026-05-30T00:00:00.000Z"
+    },
+    {
+      "id": "q-rest-1748304005",
+      "question": "GET /products is called with no filters on a 2M-row table. What do you do?",
+      "answer": "Always paginate. Default page=0, size=20 at controller layer. Three patterns: Offset (?page=0&size=20, simple but unstable on inserts/deletes), Cursor (?cursor=<token>, stable, Twitter/FB feeds), Keyset (?after_id=500, good for time-series). Offset for product catalog; cursor for real-time feeds.",
+      "difficulty": "easy",
+      "tags": ["pagination", "performance"],
+      "attempts": [{"timestamp": "2026-05-26T00:00:00.000Z", "correct": true}],
+      "wrongCount": 0,
+      "lastReviewed": "2026-05-26T00:00:00.000Z"
+    },
+    {
+      "id": "q-rest-1748304006",
+      "question": "Client calls POST /orders. Network timeout — they retry. Two orders now exist. How do you prevent this?",
+      "answer": "Idempotency keys. Client generates UUID and sends Idempotency-Key: <uuid> header. Server stores key + response. On duplicate, returns stored response without re-executing the operation. Stripe uses this for payments. Key must be stored in DB (not cache) to survive restarts.",
+      "difficulty": "hard",
+      "tags": ["idempotency", "idempotency-keys", "distributed-systems"],
+      "attempts": [{"timestamp": "2026-05-26T00:00:00.000Z", "correct": false}],
+      "wrongCount": 1,
+      "lastReviewed": "2026-05-26T00:00:00.000Z"
+    },
+    {
+      "id": "q-rest-1748304007",
+      "question": "API returns {\"error\": \"Something went wrong\"} on failures. Why is this bad and what should it look like?",
+      "answer": "Bad for both 4xx AND 5xx. 4xx: client can't act without structured error code + detail. 5xx: even without exposing internals, must include traceId for log correlation. RFC 7807 Problem Details standard: {type, title, status, detail, traceId, timestamp}. Without traceId on 500s, failures are untraceable in production.",
+      "difficulty": "medium",
+      "tags": ["error-handling", "rfc-7807"],
+      "attempts": [{"timestamp": "2026-05-26T00:00:00.000Z", "correct": false}],
+      "wrongCount": 1,
+      "lastReviewed": "2026-05-26T00:00:00.000Z"
+    },
+    {
+      "id": "q-rest-1748304008",
+      "question": "Mobile app screens need very different data shapes. Teammate pushes REST. Do you agree?",
+      "answer": "GraphQL fits better — avoids over/under-fetching. But GraphQL trade-offs: N+1 queries (needs DataLoader), HTTP caching breaks (POST queries), schema maintenance overhead. REST alternative: BFF (Backend for Frontend) — one service per client type, returns exact shape. SDE-2 answer: GraphQL for divergent shapes, BFF if team can't absorb GraphQL's ops complexity.",
+      "difficulty": "hard",
+      "tags": ["graphql", "rest-vs-graphql", "bff-pattern"],
+      "attempts": [{"timestamp": "2026-05-26T00:00:00.000Z", "correct": false}],
+      "wrongCount": 1,
+      "lastReviewed": "2026-05-26T00:00:00.000Z"
+    }
+  ],
+  "readinessScore": 55,
+  "sessionCount": 2,
+  "syllabusTopics": [
+    "HTTP methods & URI design",
+    "Idempotency & idempotency keys",
+    "Status codes",
+    "Pagination (offset, cursor, keyset)",
+    "Rate limiting & throttling",
+    "API versioning & deprecation",
+    "Error response design (RFC 7807)",
+    "Authentication (API keys, OAuth2, JWT)",
+    "Caching in REST (ETag, Cache-Control)",
+    "Long-running operations (202, polling, webhooks)",
+    "GraphQL vs REST vs BFF",
+    "API security (CORS, input validation, OWASP API top 10)"
+  ],
+  "coveredTopics": [
+    "HTTP methods & URI design",
+    "Idempotency & idempotency keys",
+    "Pagination (offset, cursor, keyset)",
+    "Rate limiting & throttling",
+    "API versioning & deprecation",
+    "Error response design (RFC 7807)",
+    "GraphQL vs REST vs BFF"
+  ],
   "pendingTopics": []
 }

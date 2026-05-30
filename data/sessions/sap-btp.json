@@ -345,5 +345,28 @@
       "wrongCount": 0,
       "lastReviewed": null
     }
-  ]
+  ],
+  "syllabusTopics": [
+    "BTP overview — Global Account, subaccount, spaces, entitlements",
+    "Clean Core & extensibility models (side-by-side, in-app)",
+    "Cloud Foundry — deployment, buildpacks, environment variables",
+    "XSUAA & security (xs-security.json, roles, scopes, JWT)",
+    "Cloud Connector — outbound tunnel, SCC setup",
+    "SAP Integration Suite — iFlows, adapters, error handling",
+    "Event Mesh — topics, queues, push vs pull, DLQ",
+    "Application Logging Service — Kibana, correlation IDs",
+    "CAP (Cloud Application Programming model)",
+    "MTA — multi-target application, mta.yaml, deploy"
+  ],
+  "coveredTopics": [
+    "BTP overview — Global Account, subaccount, spaces, entitlements",
+    "Clean Core & extensibility models (side-by-side, in-app)",
+    "Cloud Foundry — deployment, buildpacks, environment variables",
+    "XSUAA & security (xs-security.json, roles, scopes, JWT)",
+    "Cloud Connector — outbound tunnel, SCC setup",
+    "SAP Integration Suite — iFlows, adapters, error handling",
+    "Event Mesh — topics, queues, push vs pull, DLQ",
+    "Application Logging Service — Kibana, correlation IDs"
+  ],
+  "pendingTopics": []
 }

@@ -8,5 +8,19 @@
   "keyConcepts": [],
   "qa": [],
   "readinessScore": 0,
-  "sessionCount": 1
+  "sessionCount": 1,
+  "syllabusTopics": [
+    "Java core — OOP, generics, collections, streams, lambdas",
+    "Concurrency — threads, ExecutorService, synchronized, volatile, CompletableFuture",
+    "Spring Boot — auto-configuration, starters, application context",
+    "Spring MVC — controllers, request mapping, filters, interceptors",
+    "Spring Data JPA — repositories, lazy vs eager loading, N+1",
+    "Spring Security — authentication, authorization, JWT, OAuth2",
+    "Dependency injection — @Bean, @Component, @Autowired, scopes",
+    "Transaction management — @Transactional, propagation, isolation",
+    "Spring Boot testing — @SpringBootTest, MockMvc, @DataJpaTest",
+    "Actuator, metrics & observability"
+  ],
+  "coveredTopics": [],
+  "pendingTopics": []
 }

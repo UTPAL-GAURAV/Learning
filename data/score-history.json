@@ -23,14 +23,13 @@
       "date": "2026-05-23",
       "score": 68,
       "note": "Session 2. SCC concept initially confused as BTP service — needed rephrasing around cloud vs on-prem before it clicked. MTA and XSUAA coupling understood well once explained. CAP annotations correct. Cloud Connector outbound tunnel rationale still weak area."
-    }
-    ,
+    },
     {
       "topic": "cache",
       "date": "2026-05-24",
       "score": 68,
       "note": "Covered cache penetration, avalanche, breakdown. Strong on bloom filter reasoning, TTL jitter, logical TTL for leaderboard. Gap: didn't distinguish mutex vs logical TTL by latency impact — thought DB call frequency was the differentiator."
-    }
+    },
     {
       "topic": "ai-fundamentals",
       "date": "2026-05-26",
@@ -42,5 +41,23 @@
       "date": "2026-05-26",
       "score": 72,
       "note": "Session 3. Covered Event Mesh, Integration Suite, Application Logging. Strong: Event Mesh architecture, iFlow Router pattern, Kibana debug flow with tenant/correlation ID. Gaps: missed DLQ as failure mode (got queue-full and TTL only), didn't articulate why polling is bad clearly. Good questions on push/pull model and Event Mesh isolation."
+    },
+    {
+      "topic": "rest-api",
+      "date": "2026-05-26",
+      "score": 35,
+      "note": "[TEST] Diagnostic test 5/8. Strong: URI design, HTTP methods, pagination defaults. Gaps: idempotency keys (complete blank), rate limiting headers (knew 429, missed Retry-After + X-RateLimit-*), RFC 7807 error design, versioning depth (missed header versioning + RFC 8594 Sunset headers), GraphQL trade-offs (benefits known, N+1/caching/BFF not known)."
+    },
+    {
+      "topic": "cache",
+      "date": "2026-05-26",
+      "score": 64,
+      "note": "[TEST] 4/7 correct. Strong: consistent hashing, bloom filter/cache penetration, eviction policy (LFU pollution). Gaps: cache invalidation failure modes (missed DB-ok-cache-fail scenario + race condition), cache avalanche live fix (tried reload instead of SCAN + jitter on existing keys), mutex vs logical TTL (got it backwards — leaderboard = logical TTL, bank = mutex), cache-aside reasoning (missed Redis has no DB awareness)."
+    }
+    {
+      "topic": "rest-api",
+      "date": "2026-05-30",
+      "score": 55,
+      "note": "All 5 weak areas drilled and cleared. Idempotency keys: solid. Rate limiting headers: correct but thundering herd mis-labeled as DDoS. RFC 7807: traceId gap filled. Versioning: Deprecation/Sunset headers understood. GraphQL/BFF: good but missed that partner APIs need fixed REST contracts, not GraphQL. All pending topics resolved."
     }
   ]

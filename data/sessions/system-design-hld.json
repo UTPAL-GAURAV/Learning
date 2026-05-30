@@ -8,5 +8,19 @@
   "keyConcepts": [],
   "qa": [],
   "readinessScore": 0,
-  "sessionCount": 1
+  "sessionCount": 1,
+  "syllabusTopics": [
+    "Scalability — horizontal vs vertical, stateless services",
+    "Load balancing — round robin, least connections, consistent hashing",
+    "Caching layer design (CDN, application cache, DB cache)",
+    "Database design — SQL vs NoSQL, sharding, replication",
+    "Message queues & async processing (Kafka, RabbitMQ)",
+    "API design — REST, GraphQL, gRPC trade-offs",
+    "CAP theorem & consistency models",
+    "Rate limiting & throttling at scale",
+    "CDN & edge computing",
+    "Designing real systems (URL shortener, Twitter feed, payment system, ride-hailing)"
+  ],
+  "coveredTopics": [],
+  "pendingTopics": []
 }

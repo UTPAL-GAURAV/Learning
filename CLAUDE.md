@@ -20,6 +20,16 @@ Sessions are stored as individual topic files:
 
 When reading session data at session start, always use `data/sessions/<topic-slug>.json`, not the old `data/sessions.json`.
 
+Each topic session file has two syllabus tracking arrays:
+- `syllabusTopics` — the full canonical SDE-2 syllabus for that topic (fixed list, set when topic is created)
+- `coveredTopics` — sub-topics actually taught so far (append to this as each sub-topic is cleared)
+
+The UI shows two progress bars on each topic card:
+- **Coverage bar** (violet) — `coveredTopics.length / syllabusTopics.length * 100`
+- **Readiness bar** (color-coded) — `readinessScore`
+
+Also update `syllabusProgress` in `data/sessions-index.json` after each sub-topic is cleared (same formula: covered/total * 100, rounded).
+
 Each topic session file also has a `pendingTopics` array for sub-topics that were deferred mid-session:
 ```json
 "pendingTopics": [
@@ -36,6 +46,8 @@ Each topic session file also has a `pendingTopics` array for sub-topics that wer
 - Append a score entry to `data/score-history.json` (under `history` array)
 - Update notes and key concepts in `data/sessions/<topic-slug>.json`
 - Update `data/weak-areas.json` (under `weakAreas` array) if a gap was exposed
+- **Append the sub-topic name to `coveredTopics`** in `data/sessions/<topic-slug>.json` — use the exact string from `syllabusTopics`
+- **Update `syllabusProgress`** in `data/sessions-index.json` for this topic: `round(coveredTopics.length / syllabusTopics.length * 100)`
 
 **Whenever Utpal defers a sub-topic** (says "we'll take it up later", "skip for now", picks one option from a choice, or you ask what to study first and he picks one):
 - Immediately write the deferred item into `pendingTopics` in `data/sessions/<topic-slug>.json`
@@ -148,8 +160,11 @@ No teaching. No hints. Pure mock interview.
 
 ### How to run it
 
-1. Read `data/sessions/<topic-slug>.json` — pull from the existing `qa` array. If fewer than 3 cards exist, supplement with fresh SDE-2 level questions on covered sub-topics.
-2. Pick 5–8 questions. Mix: scenario-based, trade-off, debugging, design. Bias toward weak areas from `data/weak-areas.json`.
+1. Read `data/sessions/<topic-slug>.json` — pull from the existing `qa` array.
+2. Pick 5–8 questions using a **50/50 split**:
+   - **50% from existing `qa` array** — bias toward weak areas from `data/weak-areas.json` and low-attempt cards
+   - **50% new scenarios** — fresh SDE-2 level questions on covered sub-topics NOT already in the `qa` array; invent them in the same scenario/trade-off/debugging format
+   - If fewer than 3 existing cards: fill the test entirely with fresh questions
 3. Ask one question at a time. Wait for the answer. Do not give hints.
 4. After each answer: say only "✓ Correct" / "✗ Incorrect / Partial" + one-line explanation of what was missing. No re-teaching.
 5. After all questions: give a test summary:
@@ -165,7 +180,7 @@ No teaching. No hints. Pure mock interview.
   - `newScore = round(0.6 * currentReadinessScore + 0.4 * testPercentage)`
   - This blends past learning score with live test performance
   - Cap at 95 unless the test was perfect AND prior score was already ≥ 85
-- For each question answered wrong: add to `data/weak-areas.json` (or increment `wrongCount` if already there)
+- For each question answered **wrong or partial** (whether from `qa` array or a new question): add a Q&A card to the `qa` array in the session file (same format as regular Q&A cards), and add to `data/weak-areas.json`
 - For each question in the `qa` array that was tested: append to its `attempts` array: `{ "timestamp": "...", "correct": true/false }`
 - Do all of this silently.
 

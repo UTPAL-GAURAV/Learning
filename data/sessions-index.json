@@ -4,71 +4,81 @@
       "topicSlug": "ai-fundamentals",
       "topic": "AI Fundamentals",
       "updatedAt": "2026-05-23T00:00:00.000Z",
-      "readinessScore": 45,
-      "sessionCount": 1
+      "readinessScore": 68,
+      "sessionCount": 1,
+      "syllabusProgress": 78
     },
     {
       "topicSlug": "sap-btp",
       "topic": "SAP BTP",
       "updatedAt": "2026-05-26T00:00:00.000Z",
       "readinessScore": 72,
-      "sessionCount": 3
+      "sessionCount": 3,
+      "syllabusProgress": 80
     },
     {
       "topicSlug": "cache",
       "topic": "Cache",
       "updatedAt": "2026-05-24T00:00:00.000Z",
-      "readinessScore": 68,
-      "sessionCount": 2
+      "readinessScore": 64,
+      "sessionCount": 2,
+      "syllabusProgress": 78
     },
     {
       "topicSlug": "dsa",
       "topic": "DSA",
       "updatedAt": "2026-05-24T00:00:00.000Z",
       "readinessScore": 0,
-      "sessionCount": 1
+      "sessionCount": 1,
+      "syllabusProgress": 20
     },
     {
       "topicSlug": "devops",
       "topic": "DevOps",
       "updatedAt": "2026-05-24T10:50:17.640Z",
       "readinessScore": 0,
-      "sessionCount": 1
+      "sessionCount": 1,
+      "syllabusProgress": 0
     },
     {
       "topicSlug": "rest-api",
       "topic": "REST API",
-      "updatedAt": "2026-05-24T00:00:00.000Z",
-      "readinessScore": 0,
-      "sessionCount": 0
+      "updatedAt": "2026-05-30T00:00:00.000Z",
+      "readinessScore": 55,
+      "sessionCount": 2,
+      "syllabusProgress": 58
     },
     {
       "topicSlug": "java-spring-boot",
       "topic": "Java & Spring Boot",
       "updatedAt": "2026-05-24T11:27:54.918Z",
       "readinessScore": 0,
-      "sessionCount": 1
+      "sessionCount": 1,
+      "syllabusProgress": 0
     },
     {
       "topicSlug": "sql",
       "topic": "SQL",
       "updatedAt": "2026-05-24T00:00:00.000Z",
       "readinessScore": 0,
-      "sessionCount": 0
+      "sessionCount": 0,
+      "syllabusProgress": 0
     },
     {
       "topicSlug": "system-design-hld",
       "topic": "System Design (HLD)",
       "updatedAt": "2026-05-24T11:31:24.786Z",
       "readinessScore": 0,
-      "sessionCount": 1
+      "sessionCount": 1,
+      "syllabusProgress": 0
     },
     {
       "topicSlug": "system-design-lld",
       "topic": "System Design (LLD)",
       "updatedAt": "2026-05-24T11:31:36.368Z",
       "readinessScore": 0,
-      "sessionCount": 1
+      "sessionCount": 1,
+      "syllabusProgress": 0
     }
   ]
 }
