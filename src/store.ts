@@ -71,6 +71,9 @@ function buildIndex(sessions: Session[]): SessionIndexData {
       updatedAt: s.updatedAt,
       readinessScore: s.readinessScore,
       sessionCount: s.sessionCount,
+      syllabusProgress: s.syllabusTopics?.length
+        ? Math.round(((s.coveredTopics?.length ?? 0) / s.syllabusTopics.length) * 100)
+        : 0,
     })),
   }
 }

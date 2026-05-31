@@ -22,19 +22,19 @@
       "topic": "sap-btp",
       "date": "2026-05-23",
       "score": 68,
-      "note": "Session 2. SCC concept initially confused as BTP service — needed rephrasing around cloud vs on-prem before it clicked. MTA and XSUAA coupling understood well once explained. CAP annotations correct. Cloud Connector outbound tunnel rationale still weak area."
+      "note": "Session 2. SCC concept initially confused as BTP service \u2014 needed rephrasing around cloud vs on-prem before it clicked. MTA and XSUAA coupling understood well once explained. CAP annotations correct. Cloud Connector outbound tunnel rationale still weak area."
     },
     {
       "topic": "cache",
       "date": "2026-05-24",
       "score": 68,
-      "note": "Covered cache penetration, avalanche, breakdown. Strong on bloom filter reasoning, TTL jitter, logical TTL for leaderboard. Gap: didn't distinguish mutex vs logical TTL by latency impact — thought DB call frequency was the differentiator."
+      "note": "Covered cache penetration, avalanche, breakdown. Strong on bloom filter reasoning, TTL jitter, logical TTL for leaderboard. Gap: didn't distinguish mutex vs logical TTL by latency impact \u2014 thought DB call frequency was the differentiator."
     },
     {
       "topic": "ai-fundamentals",
       "date": "2026-05-26",
       "score": 68,
-      "note": "Completed all planned sub-topics. Strong: pgvector choice with correct reasoning, fine-tuning vs RAG split (RAG for facts, fine-tune for tone). Gap: production triage — only addressed hallucination, missed cost and latency as separate problems, didn't show prioritization. Good architectural instincts throughout but needs to practice multi-problem prioritization answers."
+      "note": "Completed all planned sub-topics. Strong: pgvector choice with correct reasoning, fine-tuning vs RAG split (RAG for facts, fine-tune for tone). Gap: production triage \u2014 only addressed hallucination, missed cost and latency as separate problems, didn't show prioritization. Good architectural instincts throughout but needs to practice multi-problem prioritization answers."
     },
     {
       "topic": "sap-btp",
@@ -52,12 +52,25 @@
       "topic": "cache",
       "date": "2026-05-26",
       "score": 64,
-      "note": "[TEST] 4/7 correct. Strong: consistent hashing, bloom filter/cache penetration, eviction policy (LFU pollution). Gaps: cache invalidation failure modes (missed DB-ok-cache-fail scenario + race condition), cache avalanche live fix (tried reload instead of SCAN + jitter on existing keys), mutex vs logical TTL (got it backwards — leaderboard = logical TTL, bank = mutex), cache-aside reasoning (missed Redis has no DB awareness)."
-    }
+      "note": "[TEST] 4/7 correct. Strong: consistent hashing, bloom filter/cache penetration, eviction policy (LFU pollution). Gaps: cache invalidation failure modes (missed DB-ok-cache-fail scenario + race condition), cache avalanche live fix (tried reload instead of SCAN + jitter on existing keys), mutex vs logical TTL (got it backwards \u2014 leaderboard = logical TTL, bank = mutex), cache-aside reasoning (missed Redis has no DB awareness)."
+    },
     {
       "topic": "rest-api",
       "date": "2026-05-30",
       "score": 55,
       "note": "All 5 weak areas drilled and cleared. Idempotency keys: solid. Rate limiting headers: correct but thundering herd mis-labeled as DDoS. RFC 7807: traceId gap filled. Versioning: Deprecation/Sunset headers understood. GraphQL/BFF: good but missed that partner APIs need fixed REST contracts, not GraphQL. All pending topics resolved."
+    },
+    {
+      "topic": "rest-api",
+      "date": "2026-05-30",
+      "score": 60,
+      "note": "Status codes: solid \u2014 got 409 vs 422 distinction immediately. Authentication: understood JWT+OAuth2 layering, HttpOnly cookie, refresh token rotation. Gap: incident response \u2014 would check logs first instead of immediately revoking refresh token. Good cross-questions on Google Auth vs own auth, token storage."
+    },
+    {
+      "topic": "rest-api",
+      "date": "2026-05-31",
+      "score": 65,
+      "note": "Completed all remaining topics. Caching: missed Cache-Control as primary answer, ETag mechanics needed coaching on naive vs manual impl and staleness trade-off. Long-running ops: correct pattern (polling for mobile), missed 202/Location design, exponential backoff direction backwards, scheduler interval too long (24h), missed worker-level timeout. API Security: BOLA fix correct immediately \u2014 ownership check from JWT, 403 response. Good instincts throughout but needed architectural fill-ins."
     }
   ]
+}

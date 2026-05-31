@@ -44,9 +44,9 @@
       "topicSlug": "rest-api",
       "topic": "REST API",
       "updatedAt": "2026-05-30T00:00:00.000Z",
-      "readinessScore": 55,
-      "sessionCount": 2,
-      "syllabusProgress": 58
+      "readinessScore": 60,
+      "sessionCount": 3,
+      "syllabusProgress": 75
     },
     {
       "topicSlug": "java-spring-boot",

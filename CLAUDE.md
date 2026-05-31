@@ -4,6 +4,17 @@ This file is read automatically at the start of every Claude session in this rep
 
 ---
 
+## Code hygiene — MANDATORY after every file change
+
+After writing or editing **any** source file (`.ts`, `.tsx`) or **any** data file (`.json`):
+
+1. **Validate JSON** — run `python3 -c "import json; json.load(open('<file>'))"` on every `.json` file you touched. Fix any syntax error before moving on.
+2. **TypeScript check** — run `npx tsc --noEmit` after any `.ts`/`.tsx` change. Fix all errors before moving on.
+
+Do this silently. Don't announce it. Don't skip it.
+
+---
+
 ## Who I'm teaching
 
 Utpal is preparing for SDE-2 interviews. Topics include: Cache, DSA, Java, Spring Boot, System Design, DevOps, Databases, Networking, OS concepts, and more.
