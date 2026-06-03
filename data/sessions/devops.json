@@ -3,23 +3,260 @@
   "topic": "DevOps",
   "topicSlug": "devops",
   "createdAt": "2026-05-24T10:50:17.640Z",
-  "updatedAt": "2026-05-24T10:50:17.640Z",
-  "notes": "",
-  "keyConcepts": [],
-  "qa": [],
-  "readinessScore": 0,
+  "updatedAt": "2026-06-02T00:00:00.000Z",
+  "notes": "## Docker \u2014 Core Analogy\n\n```\nDockerfile     \u2192 the recipe        (text file, few KB, what you write)\nDocker image   \u2192 the baked cake    (binary artifact, hundreds of MB, what gets built)\nContainer      \u2192 the cake being eaten (running instance of the image)\n```\n\n---\n\n## CI/CD Pipelines\n\nAutomatically build, test, and deploy on every code push. Fail fast, never merge broken code.\n\n```\nCode Push \u2192 Build \u2192 Unit Tests \u2192 Integration Tests \u2192 Artifact \u2192 Deploy (staging) \u2192 Deploy (prod)\n```\n\n- **CI** = build + test on every commit\n- **Continuous Delivery** = auto-deploy to staging, human approval for prod\n- **Continuous Deployment** = fully automated all the way to prod\n\n**Optimizing a slow pipeline:**\n- Parallelize unit + integration tests\n- Overlap Docker build with tests (start build after compile, cancel if tests fail)\n- Use Docker layer caching (see below)\n- Check integration test infra \u2014 spinning up real DB is often the bottleneck (use Testcontainers)\n\n---\n\n## Docker \u2014 Images, Containers, Dockerfile, Multi-stage Builds\n\n**Terminology:**\n```\nDockerfile   \u2192 recipe (text file, KB)         written by you\ndocker build \u2192 converts Dockerfile to image\nDocker image \u2192 filesystem snapshot (hundreds of MB)  pushed to registry\ndocker run   \u2192 creates a container from image\nContainer    \u2192 running process instance of an image\n```\n\n**Layer caching \u2014 rule: stable things first, changing things last**\n\nEach Dockerfile instruction creates a layer. Docker caches each layer. If a layer's input changes, that layer AND all layers after it re-run (because each layer is built on top of the previous).\n\nGood order:\n```dockerfile\nCOPY pom.xml .                    # rarely changes\nRUN mvn dependency:resolve        # cached unless pom.xml changed (~2 min, skipped 95% of pushes)\nCOPY src/ src/                    # changes every push\nRUN mvn package -DskipTests       # always re-runs but fast (~30 sec)\n```\n\nBad order: COPY src/ first \u2192 dep download re-runs every push \u2192 8 min every time.\n\n**Multi-stage builds \u2014 reduces final image size, not build time**\n\n```dockerfile\n# Stage 1 \u2014 build (heavy, throwaway)\nFROM maven:3.9-eclipse-temurin-17 AS builder\nCOPY pom.xml .\nRUN mvn dependency:resolve\nCOPY src/ src/\nRUN mvn package -DskipTests\n\n# Stage 2 \u2014 runtime (lean, ships to prod)\nFROM eclipse-temurin:17-jre\nCOPY --from=builder target/app.jar app.jar\nCMD [\"java\", \"-jar\", \"app.jar\"]\n```\n\nStage 1 uses Maven image (~600MB) \u2014 runs once in CI, thrown away after build.\nStage 2 uses JRE-only image (~200MB) \u2014 this is what gets pushed to registry and pulled everywhere.\n\nMaven is build-time only. The final jar already contains all dependencies baked in \u2014 JRE just runs it.\n\n**Size comparison:**\n```\nNo multi-stage:       ~1.2GB  (Maven + JDK + source + app)\nMulti-stage:          ~250MB  (JRE + app.jar only)\nSmaller base image:   ~150MB  (JRE alpine + app.jar)\n```\n\n**Priority for a bloated image:**\n1. Multi-stage build \u2192 biggest size reduction\n2. Layer caching \u2192 biggest build time reduction\n3. Smaller base image (alpine) \u2192 marginal win after multi-stage already done\n\n**Why ship lean:**\n- Faster pulls on every deploy and pod scale-up\n- Smaller attack surface\n- No build tools available if attacker gets a shell inside the container\n\n---\n\n## Kubernetes \u2014 Pods, Deployments, Services\n\n**Core analogy:**\n- Docker = one chef cooking one dish on one machine\n- Kubernetes = restaurant manager \u2014 how many chefs, replace sick ones, route customers\n\n**Cluster** = group of machines (Nodes) Kubernetes manages as one unit. If a Node dies, Kubernetes moves its pods to other Nodes automatically.\n\n**Building blocks:**\n```\nPod        = Kubernetes' unit. Wraps 1 container (usually). Adds network, health checks, resource limits.\nDeployment = manages pods. \"Run 3 replicas, restart if crash, rolling update on change.\"\nService    = stable network endpoint. Pods die/get new IPs \u2014 Service gives a fixed address.\nIngress    = HTTP router. Routes external traffic to the right Service by URL/hostname.\nHPA        = Horizontal Pod Autoscaler. Scales pod count up/down based on CPU/memory.\n```\n\n```\nInternet \u2192 Ingress \u2192 Service \u2192 Pod(s)\n                        \u2191\n                   Deployment manages\n                        \u2191\n                   HPA scales\n```\n\n**Pod vs Container:**\n- Container = the actual running process (Docker container)\n- Pod = Kubernetes wrapper around container(s). K8s schedules pods, not containers directly.\n- In practice: 1 pod = 1 container. Sidecars (e.g. log shipper) are the exception.\n\n**Rolling update strategy:**\n```yaml\nrollingUpdate:\n  maxUnavailable: 1   # how many pods can be down at once\n  maxSurge: 1         # how many extra pods can spin up above desired count\n```\n- Serial (safe): maxUnavailable=1, maxSurge=0\n- Parallel (faster, riskier): maxUnavailable=5\n- Zero downtime: maxUnavailable=0, maxSurge=2 (spin up new first, then kill old)\n- Default: 25% each \u2014 for 10 pods, ~2-3 replaced at a time\n\n**Zero-downtime deploy = readiness probe + rolling update + graceful shutdown**\n\n| Step | What happens |\n|---|---|\n| New pod starts | Kubernetes waits for readiness probe to pass |\n| Readiness passes | Service adds pod \u2192 traffic starts flowing |\n| Old pod targeted for removal | Service removes it \u2192 no new requests reach it |\n| SIGTERM sent | Pod finishes in-flight requests, then exits |\n| Timeout (30s default) | SIGKILL \u2014 force kill |\n\n**Graceful shutdown in Spring Boot:**\n```properties\nserver.shutdown=graceful\nspring.lifecycle.timeout-per-shutdown-phase=30s\n```\nWithout this: pod exits immediately on SIGTERM \u2192 in-flight requests drop.\n\n**Stateless design \u2014 critical for Kubernetes:**\n\nCallbacks from external services hit the Service \u2192 routed to any available pod. If you store \"waiting\" state in Pod A's memory and callback hits Pod B \u2192 state not found.\n\n```\nBad:  Pod A stores \"waiting for payment\" in memory \u2192 gets killed \u2192 callback hits Pod B \u2192 lost\nGood: Pod A writes \"pending\" to DB \u2192 any pod handles callback \u2192 reads from DB \u2192 done\n```\n\nRule: never store state in pod memory that another request will need. Use DB, Redis, or message queue.\n\n**Service is built-in** \u2014 define once in YAML, apply once, Kubernetes manages pod registration + health tracking + load balancing forever.\n\n---\n\n## Deployment Strategies \u2014 Rolling, Blue-Green, Canary\n\n| Strategy | How | Rollback | Cost | Real users hit v2? | Use when |\n|---|---|---|---|---|---|\n| Rolling | Replace pods gradually in batches | Slow (re-roll all pods) | Normal | Immediately (even 1st pod) | 90% of deploys |\n| Blue-Green | Full v2 fleet runs alongside v1, flip Ingress | Instant (flip back) | 2x infra | Only after manual flip | Need QA sign-off on prod infra before any real user |\n| Canary | Route small % to v2, expand if healthy | Fast (shift % back) | Normal | Yes, but small % first | High-risk release, need real traffic validation |\n\n**Rolling \u2014 the default:**\n- `maxUnavailable=0, maxSurge=2` = zero downtime (spin up new first)\n- Can add manual approval gate in CI/CD pipeline before continuing rollout\n- Limitation: real users hit v2 from the first pod\n\n**Blue-Green \u2014 the compliance tool:**\n- Green runs fully on prod infra (same DB, secrets, config) but Ingress still points to Blue\n- QA team tests Green via internal URL \u2014 zero real users\n- After sign-off: flip Ingress \u2192 instant switch\n- Rollback: flip Ingress back in seconds\n- Catch: DB changes don't roll back. Liquibase can rollback DDL but NOT data written in v2 format\n- Real win: only strategy where NO real user touches v2 before human approval\n- Use when: regulated industries (banking, healthcare) where even 1 user hitting a broken release is a compliance issue\n\n**Canary \u2014 the risk reducer:**\n- 5% \u2192 v2, watch metrics \u2192 20% \u2192 100%\n- Catches bugs at minimal blast radius before full rollout\n- Requires good monitoring \u2014 otherwise you're flying blind during expansion\n- Best answer for: high-risk releases, schema migrations, major rewrites\n\n**DB schema migrations \u2014 works with any strategy:**\n- Never rename/drop in same deploy as app change\n- Step 1: add new column (v1 ignores it)\n- Step 2: deploy v2 (uses new column)\n- Step 3: drop old column in later deploy\n- This makes migrations backward-compatible \u2014 v1 and v2 can coexist during rollout\n\n**One-line interview answer:**\n> Rolling for standard deploys. Canary for high-risk releases \u2014 real traffic at controlled scale. Blue-Green when compliance requires zero real user exposure before sign-off.\n\n---\n\n## Secrets Management \u2014 K8s Secrets vs Vault\n\n**Rule:** Never hardcode secrets in code or commit to git. Git history is forever.\n\n**K8s Secrets \u2014 built-in, basic:**\n- Stores secrets as base64 (NOT encryption \u2014 anyone with kubectl access can read it)\n- Injected into pods as env variables\n- No audit trail, no rotation, no fine-grained access\n- Use for: non-critical config, internal certs, simple setups\n\n**Vault \u2014 production-grade:**\n\n| Feature | K8s Secrets | Vault |\n|---|---|---|\n| Encryption at rest | Optional | Always |\n| Audit log | No | Yes \u2014 who accessed what, when |\n| Auto rotation | No | Yes |\n| Dynamic secrets | No | Yes |\n| Fine-grained access | Basic | Policy-based |\n\n**Dynamic secrets \u2014 the key Vault feature:**\n```\nApp starts \u2192 asks Vault for DB credentials\nVault \u2192 connects to PostgreSQL with admin account\nVault \u2192 runs: CREATE USER app_abc123 WITH PASSWORD 'xyz789' VALID UNTIL '2h from now'\nVault \u2192 returns username=app_abc123, password=xyz789 to your app\nApp \u2192 connects to DB with these temporary credentials\n2 hours later \u2192 Vault runs: DROP USER app_abc123\n```\nYour actual DB password never changes. Vault creates and destroys temporary users. If a credential leaks \u2192 expires automatically \u2192 useless after 2h.\n\n**Breach response \u2014 correct order (zero downtime):**\n```\n1. Create parallel DB user with new password (old credential still works \u2192 no downtime)\n2. Update secret in Vault/env with new password\n3. Deploy app \u2192 connects with new password\n4. Revoke old DB user \u2192 leaked credential now dead\n5. Check DB audit logs \u2014 any unauthorized queries in last N hours?\n6. Rotate anything else in that commit\n7. Add git-secrets pre-commit hook + secret scanning in CI pipeline\n```\n\n**Why not rotate immediately without parallel user?**\n```\nRotate immediately \u2192 app has old password in memory \u2192 all DB calls fail until redeploy (~5 min downtime)\nParallel user approach \u2192 zero downtime, breach window closed just as fast\n```\n\n**Serverless vs Traditional \u2014 when to use which:**\n```\nServerless wins:   low/unpredictable traffic, simple APIs, cost-sensitive\nTraditional wins:  sustained high traffic, long-running jobs, WebSockets, in-memory cache, latency-critical\n```\nMost real systems use both.\n\n---\n\n## Monitoring & Observability \u2014 Prometheus, Grafana, ELK\n\n```\nPrometheus  \u2192 database for metrics (scrapes /actuator/prometheus every 15s, stores time-series)\nGrafana     \u2192 UI on top of Prometheus (draws graphs, dashboards, alerts) \u2014 you never open Prometheus directly\nELK Stack   \u2192 logs (Elasticsearch stores+indexes, Logstash ships, Kibana is the search UI)\n```\n\n**Spring Boot setup \u2014 zero code needed:**\n```xml\n<dependency>spring-boot-starter-actuator</dependency>\n<dependency>micrometer-registry-prometheus</dependency>\n```\nAuto-instruments HTTP requests, JVM memory, DB pool. Exposes at `/actuator/prometheus`. Prometheus scrapes it, stores it, Grafana draws it.\n\n**Metrics vs Logs:**\n| | Metrics (Grafana) | Logs (Kibana) |\n|---|---|---|\n| Question | How many? How fast? How much? | What exactly happened? |\n| Use for | Alerting, dashboards, trends | Debugging, tracing a specific request |\n\n**Incident debug flow \u2014 metrics first, logs second:**\n```\n1. Grafana \u2192 what broke?\n   \u2192 Which endpoint has errors?\n   \u2192 5xx (server bug) or 4xx (client error)?\n   \u2192 Did latency spike? (slow query or external call)\n   \u2192 Did it coincide with a deploy?\n   \u2192 Which pod? (bad pod vs code bug)\n\n2. Kibana \u2192 why did it break?\n   \u2192 Filter: time=14:32\u201314:45, level=ERROR\n   \u2192 Find stack trace\n   \u2192 Filter by correlationId \u2192 trace full request journey\n```\nMetrics narrow the scope. Logs confirm the root cause. Don't search logs blindly.\n\n**Memory leak signature in Grafana:**\n```\nHealthy:  memory \u2191 under load \u2192 GC runs \u2192 memory \u2193  (sawtooth pattern)\nLeak:     memory \u2191 \u2192 \u2191 \u2192 \u2191 \u2192 never drops \u2192 OOM \u2192 pod crash\n```\n\n---\n\n## Container Registry & Image Security\n\n**Registry** = storage for Docker images. Like GitHub but for images.\n```\nDocker Hub   \u2192 public default\nAWS ECR      \u2192 private, tight K8s integration\nGHCR         \u2192 lives next to your GitHub code\n```\n\n**Old images are NOT deleted when you push new ones.** They accumulate. Rollback works by pointing K8s to an older image tag. Set lifecycle policies to auto-delete old images (keep last 10, delete after 30 days).\n\n**Tagging:**\n```\nmyapp:latest     \u2192 NEVER use in prod (unpredictable \u2014 always points to newest)\nmyapp:1.4.2      \u2192 semantic version \u2014 stable\nmyapp:git-a3f9c1 \u2192 git SHA \u2014 exact, traceable\n```\n\n**4 layers of image security:**\n\n| Layer | What | How |\n|---|---|---|\n| Vulnerability scanning | Detect CVEs in OS packages | Trivy/Snyk in CI \u2014 fail pipeline on critical CVEs |\n| Minimal base image | Smaller attack surface | Use alpine or distroless |\n| Non-root user | Limit blast radius if exploited | `USER appuser` in Dockerfile |\n| Image signing | Prevent tampered images | Sign after build, K8s verifies before running |\n\n**Non-root in Dockerfile:**\n```dockerfile\nRUN adduser --system --no-create-home appuser\nUSER appuser\nCMD [\"java\", \"-jar\", \"app.jar\"]\n```\nIf attacker gets shell \u2192 appuser, not root \u2192 can't escape to host node.\n\n**CVE response:**\n```\nImmediate:\n1. Update base image version in FROM line\n2. Rebuild and push new image\n3. Deploy to prod\n\nPermanent:\n4. Add Trivy scan in CI \u2014 fail on critical CVEs before push\n5. Schedule weekly scans on prod images \u2014 CVEs get discovered in already-deployed images\n6. Pin base image to digest (not tag) \u2014 prevents silent base image changes\n```\n\n**Secure CI pipeline end-to-end:**\n```\nCode push \u2192 Build image \u2192 Trivy scan (fail on CVE) \u2192 Sign image \u2192 Push to registry \u2192 K8s verifies signature \u2192 Run\n```\n\n---\n\n## Infrastructure as Code (Terraform & Helm)\n\n**What problem it solves:**\nManually setting up infrastructure = logging into AWS console, clicking through 20+ forms, configuring VMs, DBs, load balancers, networking, IAM roles one by one. Each time you need a new environment (staging, new dev joins), someone spends 2 days doing it and gets slightly different results each time. One wrong security group rule = app cannot reach DB.\n\nIaC = write a file describing what you want. Run one command. Done. Identical every time.\n\n---\n\n**Terraform -- provisions cloud infrastructure**\n\nYou write .tf files. You run terraform apply. Terraform calls the AWS (or GCP/Azure) API on your behalf. AWS does not know Terraform exists -- it just sees API calls coming in.\n\n```\nYou -> terraform apply -> Terraform reads .tf files -> calls AWS API -> AWS creates resources\n```\n\nExample:\n```hcl\nresource \"aws_instance\" \"app_server\" {\n  ami           = \"ami-0c55b159cbfafe1f0\"\n  instance_type = \"t3.medium\"\n}\n\nresource \"aws_db_instance\" \"postgres\" {\n  engine         = \"postgres\"\n  instance_class = \"db.t3.micro\"\n  password       = var.db_password\n}\n```\n\n**Why Terraform won over AWS CloudFormation:**\n- Multi-cloud: same Terraform code works on AWS + GCP + Azure + Cloudflare together. CloudFormation = AWS only.\n- terraform plan: shows exactly what will change BEFORE touching anything -- no surprises. AWS console has no equivalent.\n- Git history: infrastructure changes go through PR review like code. \"Who opened that security group?\" = git blame.\n- Cleaner syntax than CloudFormation verbose YAML/JSON.\n\n**Key commands:**\n```\nterraform plan    -> dry run -- shows what WILL change (safe, touches nothing)\nterraform apply   -> actually creates/updates/destroys resources\nterraform destroy -> tears everything down\n```\n\n**State file -- critical concept:**\nTerraform stores what it created in terraform.tfstate. This is how it knows \"this resource already exists, don't recreate it.\"\n- Always store state file in S3 (not your laptop) -- shared across team\n- If two people run terraform apply simultaneously without remote state = conflicts\n- If you lose state file, Terraform does not know what it manages -- dangerous\n\n---\n\n**Helm -- packages Kubernetes configs**\n\nKubernetes needs a YAML file for every resource: Deployment, Service, Ingress, ConfigMap, Secret, HPA. For a real app that is 10+ files. Helm bundles them into a chart (a package) with variables you can override per environment.\n\nWithout Helm: 20 files manually kept in sync across staging and prod.\n\nWith Helm:\n```\nchart/                  (one template set)\nvalues-staging.yaml     replicaCount: 2, memory: 512Mi\nvalues-prod.yaml        replicaCount: 10, memory: 2Gi\n```\n\nDeploy: helm install myapp ./chart -f values-prod.yaml\n\nHelm is to Kubernetes YAML what Maven is to Java dependencies -- packaging, versioning, reuse.\n\n---\n\n**Terraform vs Helm -- different layers, work together:**\n\n```\nTerraform  -> cloud layer:  creates K8s cluster, RDS DB, VPC, load balancer, IAM roles\nHelm       -> app layer:    deploys your app inside that K8s cluster\n```\n\nTerraform talks to AWS API. Helm talks to Kubernetes API (not AWS directly).\nTerraform outputs a kubeconfig file after creating the cluster -- Helm uses it to connect to K8s.\n\nTypical flow:\n```\nterraform apply  ->  K8s cluster exists on AWS\nhelm install     ->  your app is running inside that cluster\n```\n\n---\n\n**CI credentials for Terraform:**\n\nCI pipeline needs AWS credentials to call AWS API via Terraform.\n\n| Approach | How | Risk |\n|---|---|---|\n| Stored secrets | AWS_ACCESS_KEY_ID + SECRET in GitHub secrets / Vault | Long-lived -- if leaked, attacker has AWS access |\n| OIDC (best practice) | GitHub Actions proves identity to AWS, gets temp token per job | No stored credentials, token expires after job |\n| IAM role on runner | CI runs on EC2 with IAM role attached -- auto credentials | Only if CI is on AWS infra |\n\nOIDC = best practice. No credentials stored anywhere. Temporary token per job, expires when done.\n\n---\n\n**Full IaC workflow -- new developer joins, needs staging:**\n```\n1. git clone repo\n2. terraform apply   ->  AWS creates: K8s cluster, DB, VPC, load balancer, S3, IAM (5 min, identical to prod)\n3. helm install      ->  app deployed into cluster\nDone. Zero manual steps. Reproducible every time.\n```\n\n\n---\n\n## Cloud Fundamentals \u2014 Compute, Storage, Networking\n\n**Three building blocks everything else is built on.**\n\n---\n\n**Compute:**\n\n| Service | What | When |\n|---|---|---|\n| EC2 (AWS) | Virtual machine \u2014 full OS, you manage it | Long-running apps, full control |\n| Lambda (AWS) | Serverless function \u2014 runs on demand, dies after | Short tasks, event-driven |\n| EKS (AWS) | Managed Kubernetes \u2014 K8s without managing control plane | Containerized apps at scale |\n| ECS (AWS) | Managed containers (simpler than K8s) | Containers without K8s complexity |\n\nEC2 instance types:\n```\nt3.micro    -> 2 vCPU, 1GB RAM   -> dev/test\nt3.medium   -> 2 vCPU, 4GB RAM   -> small apps\nc5.2xlarge  -> 8 vCPU, 16GB RAM  -> CPU-heavy (compute optimized)\nr5.2xlarge  -> 8 vCPU, 64GB RAM  -> memory-heavy (Redis, in-memory DBs)\n```\n\n---\n\n**Storage:**\n\n| Service | What | When |\n|---|---|---|\n| S3 | Object storage \u2014 files, images, backups | Static files, backups, Terraform state |\n| EBS | Block storage \u2014 attached to one EC2 like a hard drive | DB storage, OS disk |\n| EFS | Network file system \u2014 shared across multiple EC2s | Shared files across instances |\n| RDS | Managed relational DB (PostgreSQL, MySQL) | Production DB without managing server |\n\nS3 key facts:\n- Infinitely scalable, 99.999999999% durability\n- Not a file system \u2014 objects, not files. No real folders (paths are just key names).\n- Use for: user uploads, static assets, Lambda packages, Terraform state files.\n\nRDS vs raw PostgreSQL on EC2:\n- RDS = AWS manages backups, patching, failover, replication. You just use the DB.\n- Raw EC2 = you manage everything. Never do this in prod.\n\n---\n\n**Networking:**\n\n**VPC (Virtual Private Cloud)** = your private isolated network inside AWS. Everything lives inside it.\n\n```\nVPC (10.0.0.0/16)\n  Public subnet  (10.0.1.0/24) -> load balancer, NAT gateway  (internet-facing)\n  Private subnet (10.0.2.0/24) -> EC2 instances, RDS DB        (no direct internet)\n```\n\nWhy private subnet for DB: DB should never be directly reachable from internet. Only app servers can reach it (enforced via Security Groups).\n\nPrivate subnet EC2s talk to internet (for package downloads etc.) via NAT gateway -- outbound only, no inbound.\n\n**Security Groups = firewall rules per resource:**\n```\nAllow inbound 443 from 0.0.0.0/0     -> anyone hits HTTPS\nAllow inbound 5432 from app-sg only  -> only app servers reach Postgres\nDeny everything else\n```\n\n**Key terms:**\n```\nRegion          -> geographic area (us-east-1, eu-west-1). One region per deployment.\n                   Cannot pick two regions -- multi-region is a separate architecture decision.\nAZ              -> Availability Zone -- isolated data center within a region.\n                   Run across 2+ AZs for high availability.\nMulti-AZ (RDS)  -> primary in AZ-1a, standby in AZ-1b, synchronous replication,\n                   auto-failover in ~60s if primary dies.\nCDN             -> CloudFront (AWS) -- caches static assets at edge locations worldwide.\n                   Asian users get JS/CSS from Singapore edge, not your London server.\nLoad Balancer   -> ALB (HTTP/HTTPS), NLB (TCP). Spans multiple AZs.\nRoute 53        -> AWS DNS. Latency-based routing = sends users to nearest region.\n```\n\n**Multi-region vs CDN:**\n```\nCDN:          solves static asset latency globally (images, JS, CSS) -- cheap, simple\nMulti-region: solves dynamic API latency -- expensive, complex, only when truly needed\n```\nFor most apps: one region + CDN. Multi-region only when API latency across continents is a business requirement.\n\n---\n\n**Complete Spring Boot app on AWS -- reference architecture:**\n```\nCompute:   EKS (or EC2) in private subnet, 2+ AZs\nDB:        RDS PostgreSQL Multi-AZ (primary AZ-1a, standby AZ-1b, auto-failover)\nStorage:   S3 for file uploads\nCDN:       CloudFront for static assets -- serves globally from edge\nNetwork:   VPC -> public subnet (ALB) -> private subnet (EC2/pods + RDS)\nHA:        ALB spans AZs, RDS Multi-AZ, K8s replicas across AZs\nLatency:   One region close to majority of users + CloudFront for static global delivery\n```\n",
+  "keyConcepts": [
+    "CI/CD pipeline stages",
+    "Continuous Delivery vs Continuous Deployment",
+    "Dockerfile vs Docker image vs container",
+    "Docker layer caching",
+    "Multi-stage builds",
+    "Base image",
+    "Container registry",
+    "Kubernetes cluster and nodes",
+    "Pod vs container",
+    "Deployment and rolling update",
+    "Service \u2014 stable network endpoint",
+    "Readiness probe",
+    "Graceful shutdown (SIGTERM)",
+    "Stateless design in Kubernetes",
+    "Vault dynamic secrets",
+    "K8s Secrets vs Vault",
+    "Breach response \u2014 parallel credential rotation",
+    "Serverless vs traditional"
+  ],
+  "qa": [
+    {
+      "id": "q-devops-1748822400001",
+      "question": "Your Spring Boot pipeline takes 8 minutes per push. Stages: compile \u2192 unit tests \u2192 integration tests \u2192 Docker build \u2192 push \u2192 deploy. What are the two biggest wins to cut that time?",
+      "answer": "1. Parallelize unit + integration tests (run both after compile, proceed when both pass). 2. Fix Docker layer caching \u2014 put COPY pom.xml + RUN mvn dependency:resolve before COPY src/ so dep download is a cache hit on most pushes. Bonus: overlap Docker build with tests.",
+      "difficulty": "medium",
+      "tags": [
+        "ci-cd",
+        "docker",
+        "pipeline-optimization"
+      ],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-devops-1748822400002",
+      "question": "Your Spring Boot Docker image is 1.2GB. Teammate says 'use a smaller base image.' You disagree \u2014 there are two bigger wins first. What are they?",
+      "answer": "1. Multi-stage build: use Maven image only in build stage, copy only the jar to a lean JRE image. 1.2GB \u2192 ~250MB. 2. Fix layer caching: put stable layers (pom.xml, dep download) before volatile layers (src/) so dep download is skipped on most builds. Smaller base image (alpine) is win #3 \u2014 only ~100MB further reduction after multi-stage already applied.",
+      "difficulty": "medium",
+      "tags": [
+        "docker",
+        "multi-stage",
+        "layer-caching"
+      ],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-devops-1748822400003",
+      "question": "Why does Dockerfile instruction order affect build time? What's the rule?",
+      "answer": "Docker caches each layer. If a layer's input changes, that layer and ALL subsequent layers re-run (because each layer builds on top of the previous). Rule: stable things first, changing things last. Put dep download before source copy \u2014 deps rarely change, source changes every push.",
+      "difficulty": "easy",
+      "tags": [
+        "docker",
+        "layer-caching"
+      ],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-devops-1748822400004",
+      "question": "Multi-stage Docker build \u2014 if Maven isn't in the final image, how do dependencies work at runtime?",
+      "answer": "Maven is build-time only. `mvn package` bundles all dependencies into a single fat JAR. At runtime, JRE just executes the JAR \u2014 Maven is no longer needed. Multi-stage copies only the compiled JAR from the build stage into the lean runtime image.",
+      "difficulty": "easy",
+      "tags": [
+        "docker",
+        "multi-stage"
+      ],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-devops-1748822400005",
+      "question": "You deploy a new version to Kubernetes. Error rate spikes to 40% within 2 minutes. You have 10 pods. What do you do immediately, and what prevents this next time?",
+      "answer": "Immediately: kubectl rollout undo deployment/my-app \u2014 reverts to previous version. Prevention: readiness probe + rolling update. Readiness probe ensures new pods pass health check before receiving traffic. Rolling update replaces pods gradually \u2014 if new pods fail probe, rollout stops, old pods stay up.",
+      "difficulty": "medium",
+      "tags": [
+        "kubernetes",
+        "deployment",
+        "rollback"
+      ],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-devops-1748822400006",
+      "question": "Your Kubernetes pod gets SIGTERM during a rolling update. It's mid-way through processing a payment request. What happens?",
+      "answer": "With server.shutdown=graceful in Spring Boot: pod stops accepting new requests, finishes the in-flight payment request, then exits cleanly. Service removes the pod from load balancer immediately on SIGTERM so no new requests arrive. If processing exceeds timeout (default 30s), SIGKILL force-kills it \u2014 so long operations need a short enough timeout or be designed as async jobs.",
+      "difficulty": "hard",
+      "tags": [
+        "kubernetes",
+        "graceful-shutdown",
+        "sigterm"
+      ],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-devops-1748822400007",
+      "question": "Your service calls PaymentGateway and waits for a callback. During a rolling update, the pod waiting for the callback gets killed. Is the callback lost?",
+      "answer": "Only if you stored state in memory. The callback itself arrives fine \u2014 it hits the Service and gets routed to any healthy pod. The problem is context: if Pod A stored 'waiting for payment' in its own memory and gets killed, Pod B has no idea. Fix: write 'pending' state to DB before calling PaymentGateway. Any pod can handle the callback by reading from DB. Rule: never store state in pod memory that another request will need.",
+      "difficulty": "hard",
+      "tags": [
+        "kubernetes",
+        "stateless",
+        "callbacks"
+      ],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-devops-1748822400008",
+      "question": "You're releasing a major checkout rewrite. Last rolling update let a schema bug cause 30% order failures for 8 minutes. Which deployment strategy do you pick and why?",
+      "answer": "Canary. Route 5% of traffic to v2 first, watch order failure rate for 10 minutes. Bug would be caught at 5% exposure instead of 30%. Blue-Green doesn't help here \u2014 both share the same DB, so if migration is wrong, 100% of users are affected after the flip. Rolling is risky for the same reason. Canary minimizes blast radius. Catch: needs good monitoring to know when to expand.",
+      "difficulty": "hard",
+      "tags": [
+        "deployment-strategies",
+        "canary",
+        "kubernetes"
+      ],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-devops-1748822400009",
+      "question": "When is Blue-Green the right choice over Rolling and Canary?",
+      "answer": "When compliance requires that zero real users touch v2 before human approval. Blue-Green is the only strategy where Green runs fully on prod infra (same DB, secrets, config) but receives zero real traffic \u2014 QA tests via internal URL. Rolling and Canary both send real users to v2 immediately, even if just 1 pod or 5%. Use case: regulated industries (banking, healthcare) where even 1 user hitting a broken release is a legal/audit problem.",
+      "difficulty": "medium",
+      "tags": [
+        "deployment-strategies",
+        "blue-green"
+      ],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-devops-1748822400010",
+      "question": "Blue-Green deploy with DB schema changes \u2014 you flip to Green, it's broken, you flip back to Blue. Are you safe?",
+      "answer": "Not necessarily. App-layer rollback is instant. But DB changes don't auto-rollback. Liquibase can rollback DDL (add/drop column) but NOT data written by v2 in a new format. If v2 wrote data in an incompatible format before you flipped back, v1 may misread it. Fix: always use backward-compatible migrations \u2014 add new column first, deploy v2, drop old column later. Never rename/drop in the same deploy as the app change.",
+      "difficulty": "hard",
+      "tags": [
+        "deployment-strategies",
+        "blue-green",
+        "db-migrations"
+      ],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-devops-1748822400011",
+      "question": "A developer commits DB_PASSWORD=prod123 to a public GitHub repo. It's been there 2 hours. Walk through your response in the next 30 minutes \u2014 zero downtime.",
+      "answer": "1. Create parallel DB user with new password (old credential still works \u2014 no downtime). 2. Update secret in Vault/env with new password. 3. Deploy app with new password. 4. Revoke old DB user \u2014 leaked credential dead. 5. Check DB audit logs for unauthorized queries in last 2 hours. 6. Scan commit for other leaked secrets. 7. Add git-secrets pre-commit hook + secret scanning in CI. Long term: Vault dynamic secrets \u2014 credentials expire automatically, leaked credential useless after 2h.",
+      "difficulty": "hard",
+      "tags": [
+        "secrets",
+        "breach-response",
+        "vault"
+      ],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-devops-1748822400012",
+      "question": "K8s Secrets vs Vault \u2014 your team stores prod DB password in a K8s Secret. What are the risks and what does Vault fix?",
+      "answer": "K8s Secrets risks: base64 is not encryption (anyone with kubectl access sees plaintext), no audit trail, no rotation. Vault fixes: always-encrypted at rest, audit log (who accessed what when), auto-rotation, dynamic secrets (creates temporary per-instance credentials that expire), policy-based access. For prod secrets, Vault. K8s Secrets only for non-critical config.",
+      "difficulty": "medium",
+      "tags": [
+        "secrets",
+        "vault",
+        "kubernetes"
+      ],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-devops-1748908800001",
+      "question": "Error rate spiked from 0.1% to 12% at 14:32. It's 14:45. Walk through your debug process \u2014 which tools in what order.",
+      "answer": "1. Grafana first \u2014 narrow scope: which endpoint, 5xx or 4xx, did latency spike (\u2192 slow query), which pod, correlate with recent deploy. 2. Kibana second \u2014 filter time=14:32\u201314:45 + level=ERROR, find stack trace, filter by correlationId to trace a failed request end-to-end. Metrics tell you what and where. Logs tell you exactly why. Never search logs blindly.",
+      "difficulty": "medium",
+      "tags": [
+        "monitoring",
+        "observability",
+        "incident-response"
+      ],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-devops-1748908800002",
+      "question": "Security scan finds a critical CVE in your prod Docker image's base OS. Your app code is clean. What do you do now and permanently?",
+      "answer": "Immediate: update FROM line to patched base image version, rebuild and push new image, deploy to prod via rolling update. Permanent: add Trivy scan in CI pipeline (fail on critical CVEs before push), schedule weekly scans on prod images (CVEs get discovered in already-deployed images too), pin base image to digest not tag. Weekly scans are the gap most people miss.",
+      "difficulty": "medium",
+      "tags": [
+        "container-security",
+        "trivy",
+        "image-security"
+      ],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-devops-1748908800003",
+      "question": "Rolling vs Canary \u2014 traffic shifts gradually in both. What's actually different?",
+      "answer": "Rolling: goal is replacing pods. Traffic shift is a side effect. No monitoring gate \u2014 keeps rolling automatically as long as readiness probe passes. Can't hold at 10% intentionally. Canary: goal is validating v2 on real traffic at controlled percentage. You explicitly route X% via Ingress rules. Has a monitoring gate \u2014 hold at 5% for 30 min, check error rates, then decide to proceed or rollback. Difference: intent, control, and monitoring gate.",
+      "difficulty": "medium",
+      "tags": [
+        "deployment-strategies",
+        "canary",
+        "rolling"
+      ],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    }
+  ],
+  "readinessScore": 50,
   "sessionCount": 1,
   "syllabusTopics": [
     "CI/CD pipelines (Jenkins, GitHub Actions, stages)",
-    "Docker — images, containers, Dockerfile, multi-stage builds",
-    "Kubernetes — pods, deployments, services, ingress, HPA",
+    "Docker \u2014 images, containers, Dockerfile, multi-stage builds",
+    "Kubernetes \u2014 pods, deployments, services, ingress, HPA",
     "Infrastructure as Code (Terraform, Helm)",
     "Monitoring & observability (Prometheus, Grafana, ELK)",
     "GitOps & deployment strategies (blue-green, canary, rolling)",
-    "Cloud fundamentals (AWS/GCP — compute, storage, networking)",
+    "Cloud fundamentals (AWS/GCP \u2014 compute, storage, networking)",
     "Secrets management (Vault, K8s secrets)",
     "Container registry & image security"
   ],
-  "coveredTopics": [],
+  "coveredTopics": [
+    "CI/CD pipelines (Jenkins, GitHub Actions, stages)",
+    "Docker \u2014 images, containers, Dockerfile, multi-stage builds",
+    "Kubernetes \u2014 pods, deployments, services, ingress, HPA",
+    "GitOps & deployment strategies (blue-green, canary, rolling)",
+    "Secrets management (Vault, K8s secrets)",
+    "Monitoring & observability (Prometheus, Grafana, ELK)",
+    "Container registry & image security",
+    "Infrastructure as Code (Terraform, Helm)",
+    "Cloud fundamentals (AWS/GCP \u2014 compute, storage, networking)"
+  ],
   "pendingTopics": []
 }

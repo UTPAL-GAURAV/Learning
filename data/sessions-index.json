@@ -35,10 +35,10 @@
     {
       "topicSlug": "devops",
       "topic": "DevOps",
-      "updatedAt": "2026-05-24T10:50:17.640Z",
-      "readinessScore": 0,
+      "updatedAt": "2026-06-03T00:00:00.000Z",
+      "readinessScore": 50,
       "sessionCount": 1,
-      "syllabusProgress": 0
+      "syllabusProgress": 100
     },
     {
       "topicSlug": "rest-api",

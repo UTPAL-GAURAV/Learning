@@ -72,5 +72,23 @@
       "score": 65,
       "note": "Completed all remaining topics. Caching: missed Cache-Control as primary answer, ETag mechanics needed coaching on naive vs manual impl and staleness trade-off. Long-running ops: correct pattern (polling for mobile), missed 202/Location design, exponential backoff direction backwards, scheduler interval too long (24h), missed worker-level timeout. API Security: BOLA fix correct immediately \u2014 ownership check from JWT, 403 response. Good instincts throughout but needed architectural fill-ins."
     }
+    ,{
+      "topic": "devops",
+      "date": "2026-06-02",
+      "score": 35,
+      "note": "Covered CI/CD pipelines and Docker. Strong: test parallelization, multi-stage build concept, layer caching rule (stable first). Gaps: didn't know Docker layer caching terminology upfront (not yet taught), confused Dockerfile with Docker image initially, needed coaching on why cache busts cascade."
+    }
+    ,{
+      "topic": "devops",
+      "date": "2026-06-03",
+      "score": 45,
+      "note": "Covered 7/9 sub-topics. Strong: Docker layer caching reasoning, multi-stage builds, K8s stateless design, deployment strategy trade-offs (correctly challenged Blue-Green limitations), Vault dynamic secrets, CVE response. Gaps: needed clarification on rolling vs canary distinction, run-as-root concept, serverless cold start tradeoffs. Good critical thinking throughout — challenged incorrect or imprecise explanations."
+    }
+    ,{
+      "topic": "devops",
+      "date": "2026-06-03",
+      "score": 50,
+      "note": "Completed all 9 sub-topics. Strong: Docker layer caching reasoning, K8s stateless design, deployment strategy trade-offs, Vault dynamic secrets, CVE response, cloud architecture (VPC, subnets, RDS). Gaps: rolling vs canary distinction needed clarification, multi-region vs CDN, RDS service name missing in cloud answer. Good critical thinking -- challenged imprecise explanations throughout."
+    }
   ]
 }
