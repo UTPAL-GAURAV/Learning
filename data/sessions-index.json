@@ -79,6 +79,30 @@
       "readinessScore": 0,
       "sessionCount": 1,
       "syllabusProgress": 0
+    },
+    {
+      "topicSlug": "js-ts",
+      "topic": "JavaScript & TypeScript",
+      "updatedAt": "2026-06-04T00:00:00.000Z",
+      "readinessScore": 0,
+      "sessionCount": 0,
+      "syllabusProgress": 0
+    },
+    {
+      "topicSlug": "angular",
+      "topic": "Angular",
+      "updatedAt": "2026-06-04T00:00:00.000Z",
+      "readinessScore": 0,
+      "sessionCount": 0,
+      "syllabusProgress": 0
+    },
+    {
+      "topicSlug": "platform-engineer",
+      "topic": "Platform Engineer",
+      "updatedAt": "2026-06-06T00:00:00.000Z",
+      "readinessScore": 0,
+      "sessionCount": 0,
+      "syllabusProgress": 0
     }
   ]
 }
