@@ -89,6 +89,24 @@
       "date": "2026-06-03",
       "score": 50,
       "note": "Completed all 9 sub-topics. Strong: Docker layer caching reasoning, K8s stateless design, deployment strategy trade-offs, Vault dynamic secrets, CVE response, cloud architecture (VPC, subnets, RDS). Gaps: rolling vs canary distinction needed clarification, multi-region vs CDN, RDS service name missing in cloud answer. Good critical thinking -- challenged imprecise explanations throughout."
+    },
+    {
+      "topic": "system-design-lld",
+      "date": "2026-06-08",
+      "score": 70,
+      "note": "Covered SOLID principles. Strong: OCP diagnosis + factory fix, DIP + Spring DI connection, LSP vs ISP distinction, base class vs interface reasoning. Sharp cross-questions on LSP/ISP overlap and whether interfaces can violate LSP. Gap: minor — initially put fly() on NonFlyingBird instead of FlyingBird in LSP fix."
+    },
+    {
+      "topic": "system-design-lld",
+      "date": "2026-06-09",
+      "score": 65,
+      "note": "Covered Creational patterns (Singleton, Factory, Builder). Strong: thread-safety diagnosis, synchronized keyword instinct, Factory OCP connection, Builder chaining usage. Gaps: didn't know volatile/double-checked locking syntax, Builder inner class structure wrong (extends instead of inner class, missing return this, missing private constructor)."
+    }
+    ,{
+      "topic": "system-design-lld",
+      "date": "2026-06-11",
+      "score": 65,
+      "note": "Covered Structural patterns (Adapter, Decorator). Strong: Adapter structure, Decorator stacking concept. Gaps: modified the target interface instead of absorbing mismatch in Adapter; Decorator didn't implement Pizza interface initially; accepted concrete class instead of interface."
     }
   ]
 }

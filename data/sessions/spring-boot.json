@@ -1,0 +1,30 @@
+{
+  "id": "spring-boot-1749600000000",
+  "topic": "Spring Boot",
+  "topicSlug": "spring-boot",
+  "createdAt": "2026-06-11T00:00:00.000Z",
+  "updatedAt": "2026-06-11T00:00:00.000Z",
+  "readinessScore": 0,
+  "sessionCount": 0,
+  "syllabusTopics": [
+    "Creating a Spring Boot project — Spring Initializr, Maven vs Gradle, project structure",
+    "Auto-configuration — how it works, @SpringBootApplication, @EnableAutoConfiguration",
+    "Dependency injection — @Component, @Bean, @Autowired, @Qualifier, @Primary, scopes",
+    "Spring MVC — @RestController, @RequestMapping, @PathVariable, @RequestBody, @ResponseStatus",
+    "Filters, interceptors, and middleware — when to use each",
+    "Spring Data JPA — @Entity, @Repository, JPQL, derived queries, pagination",
+    "Lazy vs eager loading — N+1 problem, @EntityGraph, fetch joins",
+    "Transaction management — @Transactional, propagation levels, isolation levels, rollback rules",
+    "Spring Security — authentication vs authorization, filter chain, JWT integration, OAuth2",
+    "Exception handling — @ControllerAdvice, @ExceptionHandler, ProblemDetail (RFC 7807)",
+    "Spring Boot testing — @SpringBootTest, MockMvc, @WebMvcTest, @DataJpaTest, Testcontainers",
+    "Actuator & observability — /health, /metrics, /info, Micrometer, distributed tracing",
+    "Configuration — application.properties vs yml, @Value, @ConfigurationProperties, profiles",
+    "Spring Boot + async — @Async, @Scheduled, TaskExecutor"
+  ],
+  "coveredTopics": [],
+  "pendingTopics": [],
+  "keyConcepts": [],
+  "notes": "",
+  "qa": []
+}

@@ -3,12 +3,9 @@
   "topic": "System Design (LLD)",
   "topicSlug": "system-design-lld",
   "createdAt": "2026-05-24T11:31:36.368Z",
-  "updatedAt": "2026-05-24T11:31:36.368Z",
-  "notes": "",
-  "keyConcepts": [],
-  "qa": [],
-  "readinessScore": 0,
-  "sessionCount": 1,
+  "updatedAt": "2026-06-09T00:00:00.000Z",
+  "readinessScore": 65,
+  "sessionCount": 2,
   "syllabusTopics": [
     "SOLID principles",
     "Design patterns — Creational (Singleton, Factory, Builder)",
@@ -19,6 +16,186 @@
     "Concurrency in OOP — thread-safe singleton, concurrent queue",
     "Interface vs abstract class — when to use each"
   ],
-  "coveredTopics": [],
-  "pendingTopics": []
+  "coveredTopics": [
+    "SOLID principles",
+    "Design patterns — Creational (Singleton, Factory, Builder)",
+    "Design patterns — Structural (Adapter, Decorator, Facade, Proxy)"
+  ],
+  "pendingTopics": [],
+  "keyConcepts": [
+    "Single Responsibility Principle",
+    "Open/Closed Principle",
+    "Liskov Substitution Principle",
+    "Interface Segregation Principle",
+    "Dependency Inversion Principle",
+    "DIP is the foundation of Spring Dependency Injection",
+    "Base class = what you ARE; Interface = what you CAN DO",
+    "LSP is a runtime correctness issue; ISP is a design smell",
+    "LSP applies to interfaces too — behavioral contract, not just syntax",
+    "Singleton — private constructor + static instance",
+    "Thread-safe Singleton — double-checked locking + volatile",
+    "Enum Singleton — JVM-guaranteed, preferred in modern Java",
+    "Factory — caller says what, factory decides which class",
+    "Registry-based Factory — OCP-compliant, self-registering types",
+    "Builder — static inner class, return this for chaining, build() creates the object",
+    "Adapter — implements target interface, wraps adaptee, translates in method body",
+    "Adapter — interface is sacred, adapter absorbs the mismatch",
+    "Decorator — implements same interface as base, accepts interface not concrete class",
+    "Decorator — both rules needed: Rule 1 for compile, Rule 2 for stackability",
+    "Proxy — Virtual Proxy: stop calling constructor by putting if condition in proxy class",
+    "Proxy — delays new RealObject() until first use; without proxy Spring runs all constructors at startup"
+  ],
+  "notes": "## Structural Design Patterns\n\n**Adapter**\nMakes two incompatible interfaces work together without changing either side.\n```\nYour code → PaymentGateway (interface)\n                └── StripeAdapter (implements PaymentGateway)\n                        └── wraps StripeSDK (third-party)\n```\nKey structure: Adapter implements the target interface, holds a reference to the adaptee, translates calls in the method body.\n> The interface is sacred — the adapter absorbs the mismatch, not the interface.\n\n**When to use:** Integrating third-party SDKs, legacy code, or any class you can't modify.\n\n---\n\n**Decorator**\nAdds behavior to an object at runtime without changing its class. Wrap it like a gift — keep adding layers.\n\n```java\ninterface Pizza { int cost(); }\n\nclass MargheritaPizza implements Pizza {\n    public int cost() { return 50; }\n}\n\nclass CheeseDecorator implements Pizza {   // must implement Pizza\n    private Pizza pizza;                   // must accept Pizza, not concrete class\n    CheeseDecorator(Pizza pizza) { this.pizza = pizza; }\n    public int cost() { return pizza.cost() + 40; }\n}\n\n// Stack any combination:\nPizza p = new CheeseDecorator(new PepperoniDecorator(new MargheritaPizza()));\n// 50 + 30 + 40 = 120\n```\n\n**Two rules decorators must follow:**\n1. Implement the same interface as the base (`implements Pizza`)\n2. Accept the interface, not a concrete class (`Pizza pizza`, not `MargheritaPizza pizza`)\n\nRule 1 is what allows `Pizza p = new CheeseDecorator(...)` to compile — Java requires the types to be compatible.\nRule 2 is what makes them stackable — `CheeseDecorator` wraps anything that is a `Pizza`.\n\n**`ToppingDecorator` middle class:** Optional. Only exists to DRY up the `private Pizza pizza` field and constructor across many decorators. Skip it for 2–3 decorators; add it for 5+.\n\n**vs Inheritance:** 3 toppings × 3 combinations = subclass explosion. Decorator avoids this — stack at runtime.\n\n> Real-world example: Java's `InputStream` — `new GZIPInputStream(new BufferedInputStream(new FileInputStream(...)))`\n\n---\n\n**Proxy**\nA stand-in that controls access to the real object. Caller holds the interface reference — never knows it's a proxy.\n\n```java\nclass ImageProxy implements Image {\n    private RealImage real;\n    public void display() {\n        if (real == null) real = new RealImage(file); // lazy — only on first use\n        real.display();\n    }\n}\n```\n\n> Virtual Proxy in one line: **stop calling the constructor by putting an if condition in the proxy class.**\n\n| Type | What it does | Example |\n|---|---|---|\n| Virtual | Lazy loads expensive objects | DB connection pool, image loading |\n| Protection | Controls access by role | Admin-only operations |\n| Remote | Represents object in another JVM | gRPC stub, RMI |\n\n**Key:** The expensive work lives in the constructor of the real class. Proxy delays `new RealObject()` until first use. Without proxy, Spring creates all beans at startup — constructors run for all 10 services even if 8 never use it.\n\n---\n\n## SOLID Principles\n\n**S — Single Responsibility**\nOne class, one reason to change. `Order` doing pricing + DB save + email = 3 reasons = SRP violation. Split into `OrderPricer`, `OrderRepository`, `OrderNotifier`.\n\n**O — Open/Closed**\nOpen for extension, closed for modification. `if/else` on type strings = OCP violation. Fix: interface + concrete class per type + Factory to map type → impl.\n```\nReportGenerator (interface)\n  └── PdfReportGenerator\n  └── ExcelReportGenerator\n  └── HtmlReportGenerator\nReportGeneratorFactory.create(type) → returns right impl\n```\nThe factory is allowed to have the if/else — its only job is mapping.\n\n**L — Liskov Substitution**\nSubclass must be substitutable for parent without surprises. `Penguin extends Bird` + `fly() throws exception` = LSP violation. Fix: split hierarchy or extract capability as interface.\n```\nBird (base)\n  └── FlyingBird → Sparrow, Parrot\n  └── NonFlyingBird → Penguin\n// OR\ninterface Flyable { void fly(); }\nclass Sparrow extends Bird implements Flyable {}\nclass Penguin extends Bird {} // no fly()\n```\nLSP applies to interfaces too — not the interface itself, but any class implementing it. Compile-time compatibility ≠ behavioral substitutability.\n\n**I — Interface Segregation**\nDon't force clients to implement methods they don't use. `Dog implements Animal` with `fly()` stub = ISP violation — even with empty stub, no exception needed.\nFix: `Dog implements Eatable, Runnable`\n\n**LSP vs ISP distinction:**\n| | LSP | ISP |\n|---|---|---|\n| Who is hurt | Caller — runtime surprise | Implementor — forced irrelevant code |\n| The problem | Behavioral contract broken | Interface design is wrong |\n| Fix | Restructure hierarchy | Split the interface |\n| When | Runtime substitution fails | Compile-time coupling is wrong |\nISP violated even with empty stub. LSP requires a substitution scenario to surface.\n\n> ISP: \"The interface is asking me to promise things I can't deliver.\" → Fix the interface design.\n> LSP: \"A caller trusted my parent's promise and I broke it at runtime.\" → Fix the hierarchy.\n> They often co-occur — but ISP is a design smell, LSP is a runtime correctness issue.\n\n**Interview rule of thumb:** If a subclass has to throw an exception to \"disable\" a parent method → LSP violation → split the hierarchy or extract an interface.\n\n**D — Dependency Inversion**\nHigh-level modules depend on abstractions, not concrete low-level modules.\n```\nBAD:  OrderService → new MySQLOrderRepository()\nGOOD: OrderService → OrderRepository (interface)\n                         └── MySQLOrderRepository\n                         └── PostgresOrderRepository\n```\nConstructor injection = DIP in practice. Spring's @Autowired + @Qualifier wires the right impl at runtime.\n\n**Base class vs Interface:**\n| | Base Class | Interface |\n|---|---|---|\n| Purpose | Shared state + behavior | Contract / capability |\n| Example | Bird has name, eat() with logic | Flyable declares fly() |\n| Benefit | Write once, inherit | Mix capabilities without hierarchy |\nPattern: `class Duck extends Bird implements Flyable, Swimmable {}`\n\n---\n\n## Creational Design Patterns\n\n**Singleton**\nOne instance, globally accessible. Private constructor blocks `new`. Static `getInstance()` returns the same instance.\n```\nprivate static volatile ConfigManager instance;\n\ngetInstance() {\n  if (null) {                       // first check — no lock\n    synchronized(ConfigManager.class) {\n      if (null) { instance = new ... } // second check — inside lock\n    }\n  }\n  return instance;\n}\n```\n`volatile` = prevents CPU reordering (partial construction visible to other threads).\nDouble null check = avoids lock on every call after instance exists.\n\n> Interview rule of thumb: Enum Singleton is cleanest — JVM guarantees one instance per enum value, thread-safe with zero boilerplate.\n\n| Style | When |\n|---|---|\n| Synchronized method | Simple, low-traffic — lock on every call |\n| Double-checked locking | Production — lock only on first creation |\n| Enum | Modern Java — no boilerplate, serialization-safe |\n\n**Factory**\nCaller says *what*, factory decides *which class*. Decouples caller from concrete types.\n```\nNotificationFactory.create(\"EMAIL\") → EmailNotification\n```\nSwitch-based: fine for small stable sets (3-4 types, same team).\nRegistry-based: OCP-compliant — new types self-register, factory never changes.\n```\nfactory.register(\"WHATSAPP\", WhatsAppNotification::new);\n```\n> If the set is open-ended or owned by different teams → registry. Small + stable → switch is fine.\n\n**Builder**\nFor objects with many optional fields. Avoids telescoping constructors.\n```\nRequest r = new Request.Builder(url, method)  // required in constructor\n    .headers(headers)                          // optional — return this\n    .body(body)\n    .build();                                  // creates the Request\n```\nKey structure: Builder is a **static inner class** inside the target class. Each setter returns `this` (the Builder) — that's what enables chaining. `build()` is the only place the target object is created. Target class has a **private constructor**.\n\n> `new Request.Builder()` = manual Java. `Request.builder()` = Lombok's @Builder. Both correct — interviews expect manual.",
+  "qa": [
+    {
+      "id": "q-lld-1749340001",
+      "question": "You have a ReportGenerator class with if/else on type strings (PDF, Excel, CSV). Team needs to add HTML. Which SOLID principle is violated and how do you fix it?",
+      "answer": "OCP violation — every new type requires modifying generateReport(). Fix: create a ReportGenerator interface, one concrete class per type (PdfReportGenerator, HtmlReportGenerator etc.), and a ReportGeneratorFactory.create(type) that maps type string to the right impl. The factory is allowed to have the if/else — its only job is that mapping.",
+      "difficulty": "medium",
+      "tags": ["SOLID", "OCP", "factory-pattern"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-lld-1749340002",
+      "question": "Penguin extends Bird. fly() throws UnsupportedOperationException. Which principle is violated? Redesign it.",
+      "answer": "LSP — Penguin is not substitutable for Bird. Fix: split into FlyingBird and NonFlyingBird, or extract Flyable as an interface. Preferred: class Bird (base), interface Flyable, class Sparrow extends Bird implements Flyable, class Penguin extends Bird (no fly). Interface approach is better — a bat can fly without being a bird.",
+      "difficulty": "medium",
+      "tags": ["SOLID", "LSP", "inheritance"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-lld-1749340003",
+      "question": "Animal interface has eat(), fly(), swim(), run(). Dog implements it with empty stubs for fly() and swim(). Which principle is violated?",
+      "answer": "ISP — Dog is forced to implement methods it doesn't need. Fix: split into Eatable, Flyable, Swimmable, Runnable interfaces. Dog implements Eatable, Runnable. ISP is violated even with empty stubs — no exception needed for the violation to exist.",
+      "difficulty": "easy",
+      "tags": ["SOLID", "ISP"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-lld-1749340004",
+      "question": "LSP and ISP both seem to be about a class implementing something it shouldn't. What's the actual difference?",
+      "answer": "ISP is a design smell — the interface is asking for promises the implementor can't keep. The problem is the interface design. LSP is a runtime correctness issue — a caller trusted the parent's contract and got surprised. LSP requires a substitution scenario (Bird b = new Penguin(); b.fly()). ISP is violated even with an empty stub, no caller needed.",
+      "difficulty": "hard",
+      "tags": ["SOLID", "LSP", "ISP"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-lld-1749340005",
+      "question": "Can an interface violate LSP? Explain.",
+      "answer": "The interface itself cannot — it has no behavior to violate. But a class implementing it can violate LSP by breaking the interface's implied contract (e.g. add() on an ImmutableList throwing UnsupportedOperationException). LSP is about behavioral substitutability, not syntax. Compile-time compatibility is not enough.",
+      "difficulty": "hard",
+      "tags": ["SOLID", "LSP", "interface"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-lld-1749340006",
+      "question": "PaymentService directly instantiates StripeGateway. Product wants PayPal support and mock payments in tests. What's the SOLID violation and fix?",
+      "answer": "DIP violation — high-level PaymentService depends on low-level StripeGateway. Fix: introduce PaymentGateway interface, StripeGateway and PayPalGateway implement it, inject via constructor. In Spring: @Autowired constructor injection + @Qualifier to pick the right impl. This also enables mocking in tests.",
+      "difficulty": "medium",
+      "tags": ["SOLID", "DIP", "dependency-injection", "spring"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-lld-1749340007",
+      "question": "When do you use a base class vs an interface? Give a real example.",
+      "answer": "Base class for shared state + default behavior (Bird has name, age, eat()). Interface for capability contracts (Flyable, Swimmable). Use both: class Duck extends Bird implements Flyable, Swimmable. Base class = what you ARE. Interface = what you CAN DO. Dropping base class forces every subclass to re-implement shared logic — code duplication.",
+      "difficulty": "medium",
+      "tags": ["OOP", "interface", "abstract-class", "SOLID"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-lld-1749430001",
+      "question": "Your Singleton ConfigManager is used across 50 threads. Occasionally different threads see different instances. What's wrong and how do you fix it?",
+      "answer": "Non-thread-safe Singleton — two threads both pass the null check simultaneously and create two instances. Fix: double-checked locking with volatile. First null check outside lock (avoids locking on every call), synchronized block, second null check inside (handles race). volatile prevents partial construction being visible to other threads. Alternative: Enum Singleton — JVM-guaranteed, zero boilerplate.",
+      "difficulty": "medium",
+      "tags": ["singleton", "thread-safety", "volatile", "creational-patterns"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-lld-1749430002",
+      "question": "What do you lock on in a static synchronized block, and why can't you use 'this'?",
+      "answer": "'this' doesn't exist in a static context. Use ConfigManager.class (the Class object — one per class in JVM) or a private static final Object LOCK = new Object(). The dedicated LOCK object is slightly preferred — it's encapsulated and purpose-named. ConfigManager.class is the conventional shorthand.",
+      "difficulty": "hard",
+      "tags": ["singleton", "thread-safety", "synchronized"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-lld-1749430003",
+      "question": "NotificationFactory has a switch on type strings. Product wants to add WhatsApp. Junior says add a case. What's the problem at scale and how do you redesign?",
+      "answer": "OCP violation — every new type modifies the factory. At scale: factory becomes 200-line switch, multiple teams can't add types independently. Fix: registry-based factory. Each type self-registers: factory.register('WHATSAPP', WhatsAppNotification::new). Factory never changes. Caveat: switch is fine for small stable sets (3-4 types, same team) — don't over-engineer.",
+      "difficulty": "medium",
+      "tags": ["factory-pattern", "OCP", "creational-patterns"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-lld-1749430004",
+      "question": "Design a Builder for HttpRequest with url+method required, headers/body/timeout/retries optional. Show the skeleton.",
+      "answer": "Builder is a static inner class inside Request. Required fields in Builder constructor. Each optional setter returns 'this' (the Builder) — enables chaining. build() creates and returns Request. Request has private constructor — only Builder can create it. Usage: new Request.Builder(url, method).headers(h).body(b).build(). In production use Lombok @Builder.",
+      "difficulty": "medium",
+      "tags": ["builder-pattern", "creational-patterns"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-lld-1749620001",
+      "question": "You have OrderService wired to PaymentGateway interface. You need to add PayPal but its SDK has a completely different method signature. You can't touch OrderService or the SDK. What do you do?",
+      "answer": "Adapter pattern. Create PayPalAdapter that implements PaymentGateway (the existing interface — don't change it). Inject PayPalClient via constructor. In the charge() method, translate: map userId to payerId, compute paymentId, call pp.executePayment(). OrderService never knows PayPal exists.",
+      "difficulty": "medium",
+      "tags": ["adapter-pattern", "structural-patterns"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-lld-1749620002",
+      "question": "Why must a Decorator implement the same interface as the class it wraps? And why must it accept the interface, not the concrete class?",
+      "answer": "Rule 1 (implements interface): allows the decorator to be used anywhere the base is expected — Pizza p = new CheeseDecorator(...) only compiles if CheeseDecorator IS-A Pizza. Rule 2 (accepts interface): makes it stackable — CheeseDecorator(Pizza pizza) can wrap MargheritaPizza or PepperoniDecorator(MargheritaPizza). If it accepted MargheritaPizza directly, you couldn't stack decorators.",
+      "difficulty": "medium",
+      "tags": ["decorator-pattern", "structural-patterns"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-lld-1749620003",
+      "question": "Pizza has 5 base types and 4 toppings. Teammate wants a subclass per combination. What's wrong and what's your fix?",
+      "answer": "Subclass explosion — 5 × 2^4 = 80 classes for all combinations. Fix: Decorator pattern. Each topping is a decorator that wraps any Pizza. Stack at runtime: new CheeseDecorator(new PepperoniDecorator(new MargheritaPizza())). Adding a new topping = one new class, not N new subclasses.",
+      "difficulty": "medium",
+      "tags": ["decorator-pattern", "structural-patterns"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-lld-1749430005",
+      "question": "Builder pattern: why must each setter return 'this' and not void?",
+      "answer": "Returning 'this' (the Builder instance) is what enables method chaining: .headers().body().timeout(). If headers() returns void, .body() has nothing to call on — compile error. The Builder accumulates state across calls; returning itself keeps the chain alive until build() is called.",
+      "difficulty": "easy",
+      "tags": ["builder-pattern", "creational-patterns"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    }
+  ]
 }

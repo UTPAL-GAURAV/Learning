@@ -127,6 +127,11 @@ Each topic (e.g. "Cache") is made of sub-topics (e.g. LRU eviction, write-throug
      - Gotchas / traps → bullet list is fine
      - Single concept with nuance → 2-3 tight sentences, no list needed
    - The goal: someone reading the notes should be able to visualize the concept, not just recall words
+   - **Include memorable one-liners for interview clarity** — when a concept has a crisp distinction that's hard to remember, add a quotable summary. Examples:
+     - `ISP: "The interface is asking me to promise things I can't deliver." → Fix the interface design.`
+     - `LSP: "A caller trusted my parent's promise and I broke it at runtime." → Fix the hierarchy.`
+     - These act as mental hooks — add them whenever a concept has a "how do I remember which is which" quality
+   - **Include interview rule-of-thumb lines** where applicable — e.g. "If a subclass has to throw an exception to disable a parent method → LSP violation"
 
 3. **Key concepts** — add any new concepts to `keyConcepts` array
 

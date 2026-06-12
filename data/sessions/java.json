@@ -1,0 +1,28 @@
+{
+  "id": "java-1749600000000",
+  "topic": "Java",
+  "topicSlug": "java",
+  "createdAt": "2026-06-11T00:00:00.000Z",
+  "updatedAt": "2026-06-11T00:00:00.000Z",
+  "readinessScore": 0,
+  "sessionCount": 0,
+  "syllabusTopics": [
+    "OOP — classes, objects, inheritance, polymorphism, encapsulation, abstraction",
+    "Interfaces vs abstract classes — when to use each",
+    "Generics — type parameters, bounded wildcards, type erasure",
+    "Collections — List, Set, Map, Queue — internals and trade-offs",
+    "Streams & lambdas — map, filter, reduce, collectors, parallel streams",
+    "Exception handling — checked vs unchecked, custom exceptions, try-with-resources",
+    "String internals — immutability, String pool, StringBuilder vs StringBuffer",
+    "Memory model — heap, stack, PermGen/Metaspace, GC basics",
+    "Concurrency — Thread, Runnable, synchronized, volatile, happens-before",
+    "java.util.concurrent — ExecutorService, Future, CompletableFuture, locks",
+    "Java 8+ features — Optional, default methods, method references, record types",
+    "Equals, hashCode, Comparable, Comparator"
+  ],
+  "coveredTopics": [],
+  "pendingTopics": [],
+  "keyConcepts": [],
+  "notes": "",
+  "qa": []
+}

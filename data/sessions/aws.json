@@ -1,0 +1,31 @@
+{
+  "id": "aws-1749600000001",
+  "topic": "AWS",
+  "topicSlug": "aws",
+  "createdAt": "2026-06-11T00:00:00.000Z",
+  "updatedAt": "2026-06-11T00:00:00.000Z",
+  "readinessScore": 0,
+  "sessionCount": 0,
+  "syllabusTopics": [
+    "Core compute — EC2 (instance types, AMI, security groups, key pairs)",
+    "Auto Scaling & Load Balancing — ASG, ALB vs NLB, target groups, health checks",
+    "Serverless — Lambda (triggers, cold start, concurrency limits, layers)",
+    "Storage — S3 (buckets, storage classes, lifecycle, presigned URLs, versioning)",
+    "Block & file storage — EBS vs EFS vs Instance Store — when to use each",
+    "Databases — RDS (Multi-AZ vs Read Replica), Aurora, DynamoDB (partition key, GSI, LSI)",
+    "Caching — ElastiCache (Redis vs Memcached on AWS), DAX for DynamoDB",
+    "Networking — VPC, subnets (public vs private), NAT Gateway, Internet Gateway, security groups vs NACLs",
+    "DNS & CDN — Route 53 (routing policies), CloudFront (origins, cache behaviors, invalidation)",
+    "Messaging & eventing — SQS (standard vs FIFO, visibility timeout, DLQ), SNS, EventBridge",
+    "Containers — ECS vs EKS, Fargate vs EC2 launch type, ECR",
+    "IAM — users, roles, policies, assume-role, instance profiles, least privilege",
+    "Observability — CloudWatch (metrics, logs, alarms), X-Ray, CloudTrail",
+    "Infrastructure as Code — CloudFormation vs CDK vs Terraform (trade-offs)",
+    "Cost & reliability — Reserved vs On-Demand vs Spot, multi-AZ vs multi-region, RTO vs RPO"
+  ],
+  "coveredTopics": [],
+  "pendingTopics": [],
+  "keyConcepts": [],
+  "notes": "",
+  "qa": []
+}
