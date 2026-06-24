@@ -107,6 +107,18 @@
       "date": "2026-06-11",
       "score": 65,
       "note": "Covered Structural patterns (Adapter, Decorator). Strong: Adapter structure, Decorator stacking concept. Gaps: modified the target interface instead of absorbing mismatch in Adapter; Decorator didn't implement Pizza interface initially; accepted concrete class instead of interface."
+    },
+    {
+      "topic": "js-ts",
+      "date": "2026-06-21",
+      "score": 45,
+      "note": "Covered Event Loop and Closures. Strong: var vs let closure bug, addEventListener timing, blocking vs non-blocking distinction, 300-request mental model. Gaps: needed coaching on who does actual I/O (libuv), async/await vs setTimeout distinction, lexical scope concept needed multiple explanations before clicking."
+    },
+    {
+      "topic": "cache",
+      "date": "2026-06-24",
+      "score": 68,
+      "note": "Covered cache warming & cold start. Good decision tree: lazy for low traffic, shadow for unknown hot keys, eager for known hot keys. Correctly identified gradual cutover + circuit breaker as DB protection. TTL jitter confirmed understood (avalanche). Good cross-questions on write-through vs write-around, TTL purpose, per-user cache ROI, concurrent writes race condition, hot key detection."
     }
   ]
 }

@@ -4,24 +4,83 @@
   "topicSlug": "dsa",
   "createdAt": "2026-05-24T00:00:00.000Z",
   "updatedAt": "2026-05-24T00:00:00.000Z",
-  "notes": "## .length vs .size() vs .length()\n\n| | Type | Used on | Example |\n|---|---|---|---|\n| `.length` | Field | Arrays only | `arr.length` |\n| `.length()` | Method | String only | `\"hello\".length()` |\n| `.size()` | Method | Collections only | `list.size()`, `map.size()`, `set.size()` |\n\nMemory hook: arrays/Strings → `.length` / `.length()`. Collections (List, Map, Set) → always `.size()`.\n\n---\n\n## PriorityQueue & Comparators\n\n| Comparator | Heap type | Top element |\n|---|---|---|\n| `new PriorityQueue<>()` | Min-heap (default) | Smallest |\n| `(a, b) -> a - b` | Min-heap | Smallest |\n| `(a, b) -> b - a` | Max-heap | Largest |\n| `Collections.reverseOrder()` | Max-heap | Largest |\n\n**How to read a comparator:** negative return → first argument has priority.\n- `a - b` negative when `a < b` → smaller values win → min-heap\n- `b - a` negative when `b < a` → larger values win → max-heap\n\n**The comparator IS what defines min/max.** There's no separate flag — you don't combine a heap type with a comparator.\n\n**Custom comparator on object field:**\n```java\nPriorityQueue<Product> pq = new PriorityQueue<>((a, b) -> a.price - b.price); // min-heap by price\n```\n\n**Top K pattern rule:**\n- Top K largest → min-heap of size K (peek = cheapest of top K = eviction candidate)\n- Top K smallest → max-heap of size K (peek = largest of top K = eviction candidate)\n\nCounter-intuitive: heap type matches what you want to *evict*, not what you want to *keep*.\n\n```java\n// Keep top 3 most expensive products\nPriorityQueue<Product> pq = new PriorityQueue<>((a, b) -> a.price - b.price); // min-heap\nif (pq.size() < 3) pq.offer(product);\nelse if (product.price > pq.peek().price) { pq.poll(); pq.offer(product); }\n```",
-  "keyConcepts": [],
-  "qa": [],
+  "notes": "## .length vs .size() vs .length()\n\n| | Type | Used on | Example |\n|---|---|---|---|\n| `.length` | Field | Arrays only | `arr.length` |\n| `.length()` | Method | String only | `\"hello\".length()` |\n| `.size()` | Method | Collections only | `list.size()`, `map.size()`, `set.size()` |\n\nMemory hook: arrays/Strings → `.length` / `.length()`. Collections (List, Map, Set) → always `.size()`.\n\n---\n\n## PriorityQueue & Comparators\n\n| Comparator | Heap type | Top element |\n|---|---|---|\n| `new PriorityQueue<>()` | Min-heap (default) | Smallest |\n| `(a, b) -> a - b` | Min-heap | Smallest |\n| `(a, b) -> b - a` | Max-heap | Largest |\n| `Collections.reverseOrder()` | Max-heap | Largest |\n\n**How to read a comparator:** negative return → first argument has priority.\n- `a - b` negative when `a < b` → smaller values win → min-heap\n- `b - a` negative when `b < a` → larger values win → max-heap\n\n**The comparator IS what defines min/max.** There's no separate flag — you don't combine a heap type with a comparator.\n\n**Custom comparator on object field:**\n```java\nPriorityQueue<Product> pq = new PriorityQueue<>((a, b) -> a.price - b.price); // min-heap by price\n```\n\n**Top K pattern rule:**\n- Top K largest → min-heap of size K (peek = cheapest of top K = eviction candidate)\n- Top K smallest → max-heap of size K (peek = largest of top K = eviction candidate)\n\nCounter-intuitive: heap type matches what you want to *evict*, not what you want to *keep*.\n\n```java\n// Keep top 3 most expensive products\nPriorityQueue<Product> pq = new PriorityQueue<>((a, b) -> a.price - b.price); // min-heap\nif (pq.size() < 3) pq.offer(product);\nelse if (product.price > pq.peek().price) { pq.poll(); pq.offer(product); }\n```\n\n---\n\n## Doubly Linked List + HashMap\n\n**Why the combo:** HashMap gives O(1) lookup by key. DLL gives O(1) insert/delete at any position *given a pointer*. Together: O(1) everything.\n\n**The trick:** store the Node reference in the HashMap — not the key, not the index. That pointer is what makes O(1) removal possible.\n\n**Node structure:**\n```java\nclass Node {\n    int key, val;\n    Node prev, next;\n}\n```\n\n**Sentinel pattern (always use this):**\n```java\nNode head = new Node(), tail = new Node(); // dummies\nhead.next = tail; tail.prev = head;\n```\n- `head.next` = LRU (oldest / least recent)\n- `tail.prev` = MRU (newest / most recent)\n- No null checks anywhere\n\n**Core operations:**\n```\nremove(node):   node.prev.next = node.next\n                node.next.prev = node.prev\n\naddToTail(node): node.prev = tail.prev\n                 node.next = tail\n                 tail.prev.next = node\n                 tail.prev = node\n\nmoveToTail(node): remove(node) → addToTail(node)\n```\n\n**LRU Cache — full pattern:**\n\n```\nget(key):\n  if not in map → return -1\n  moveToTail(map[key])\n  return map[key].val\n\nput(key, val):\n  if key in map → update val + moveToTail\n  else:\n    if size == capacity → evict head.next + remove from map\n    create new node, addToTail, add to map\n```\n\n**Eviction rule:** always evict `head.next` (LRU end). Always insert/promote to `tail.prev` (MRU end).\n\n**LRU vs LFU:**\n\n| | LRU | LFU |\n|---|---|---|\n| Evicts | Least recently accessed | Least frequently accessed |\n| Good for | Temporal locality (hot things stay hot) | Stable working sets |\n| Bad for | No locality | Bursty then cold keys (frequency accumulates) |\n| Implementation | DLL + HashMap | HashMap<key,Node> + HashMap<freq, DLL> + minFreq pointer |\n\nOne-liner: *LRU forgets old things. LFU forgets unpopular things.*\n\n**Interview trap:** \"Why not HashMap + ArrayList?\" → ArrayList removal is O(n) scan + shift. DLL removal with a stored pointer is O(1) — that's the whole point.",
+  "keyConcepts": [
+    "Doubly Linked List + HashMap: O(1) insert, delete, and lookup by combining pointer-based ordering with hash-based access",
+    "LRU Cache: evict least-recently-used; move accessed node to tail, evict from head",
+    "LFU Cache: evict least-frequently-used; track frequency buckets with a min-freq pointer",
+    "Sentinel head/tail nodes eliminate all null checks in DLL operations"
+  ],
+  "qa": [
+    {
+      "id": "q-1750000000001",
+      "question": "Design an LRU cache with O(1) get and put. You can't use any built-in LinkedHashMap. Walk me through the data structures and why.",
+      "answer": "Use a HashMap<key, Node> for O(1) lookup + a doubly linked list for O(1) ordered eviction. Most-recently-used goes to the tail; evict from head. On get: found → move node to tail, return value. On put: if key exists → update + move to tail; if at capacity → remove head node + its map entry, then insert new node at tail. Sentinel head/tail nodes avoid null checks.",
+      "difficulty": "medium",
+      "tags": ["dll", "hashmap", "lru", "design"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-1750000000002",
+      "question": "You implemented LRU using HashMap + DLL. Your interviewer asks: why not just use a HashMap + ArrayList? What breaks?",
+      "answer": "ArrayList removal is O(n) — you'd have to scan to find the node and shift elements. DLL gives O(1) removal given a pointer to the node. The HashMap stores the node reference directly, so removal is: unlink prev/next pointers — no scanning needed. ArrayList also doesn't give you O(1) move-to-front.",
+      "difficulty": "hard",
+      "tags": ["dll", "hashmap", "lru", "why-not"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-1750000000003",
+      "question": "In your DLL-based LRU, what happens if you skip sentinel (dummy) head/tail nodes? What bugs appear?",
+      "answer": "Every insert/remove must null-check whether the adjacent node exists. Removing the only node (head == tail) needs special-cased logic. Adding to an empty list needs special-cased logic. Sentinels make head.next always the LRU and tail.prev always the MRU — no conditionals needed anywhere in add/remove.",
+      "difficulty": "hard",
+      "tags": ["dll", "sentinel", "edge-cases"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-1750000000004",
+      "question": "Given a stream of integers, at any point return the k most recently seen unique integers in insertion order. Design it.",
+      "answer": "HashMap<int, Node> + DLL. On each new integer: if already in map → move its node to tail (most recent). If not in map and size < k → insert at tail. If not in map and size == k → remove head (oldest unique), delete its map entry, insert new node at tail + add to map. get() returns DLL from head to tail.",
+      "difficulty": "medium",
+      "tags": ["dll", "hashmap", "sliding-window", "design"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-1750000000005",
+      "question": "LRU vs LFU — your cache has bursty reads where a few keys get hit thousands of times, then go cold. Which eviction policy hurts you more and why?",
+      "answer": "LFU hurts more. Keys that were hot accumulate high frequency counts — even after going cold they won't be evicted because their count dwarfs new keys. LRU would have evicted them naturally once they stopped being accessed recently. LFU is better for stable working sets; LRU is better for workloads with temporal locality. Hybrid (LRU within same-frequency bucket) partially fixes LFU's cold-entry problem.",
+      "difficulty": "hard",
+      "tags": ["lru", "lfu", "eviction", "trade-off"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    }
+  ],
   "readinessScore": 0,
   "sessionCount": 1,
   "pendingTopics": [],
   "syllabusTopics": [
     "Java API fluency (PriorityQueue, collections API, .length vs .size() vs .length())",
+    "Doubly Linked List + HashMap (LRU/LFU pattern, O(1) design)",
     "Pattern recognition (sliding window, two pointers, fast-slow, BFS/DFS, backtracking, monotonic stack, DP)",
     "Data structure selection (HashMap vs TreeMap vs LinkedHashMap, ArrayDeque vs Stack, Set vs PriorityQueue)",
     "Complexity intuition (recognizing target complexity before coding)",
     "Interview communication (talking through approach out loud)"
   ],
   "coveredTopics": [
-    "Java API fluency (PriorityQueue, collections API, .length vs .size() vs .length())"
+    "Java API fluency (PriorityQueue, collections API, .length vs .size() vs .length())",
+    "Doubly Linked List + HashMap (LRU/LFU pattern, O(1) design)"
   ],
   "curriculum": [
     "Java API fluency (PriorityQueue, collections API, .length vs .size() vs .length())",
+    "Doubly Linked List + HashMap (LRU/LFU pattern, O(1) design)",
     "Pattern recognition (sliding window, two pointers, fast-slow, BFS/DFS, backtracking, monotonic stack, DP)",
     "Data structure selection (HashMap vs TreeMap vs LinkedHashMap, ArrayDeque vs Stack, Set vs PriorityQueue)",
     "Complexity intuition (recognizing target complexity before coding)",

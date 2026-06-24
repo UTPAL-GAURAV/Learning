@@ -3,10 +3,10 @@
     {
       "topicSlug": "ai-fundamentals",
       "topic": "AI Fundamentals",
-      "updatedAt": "2026-05-23T00:00:00.000Z",
+      "updatedAt": "2026-06-24T00:00:00.000Z",
       "readinessScore": 68,
       "sessionCount": 1,
-      "syllabusProgress": 78
+      "syllabusProgress": 100
     },
     {
       "topicSlug": "sap-btp",
@@ -19,18 +19,18 @@
     {
       "topicSlug": "cache",
       "topic": "Cache",
-      "updatedAt": "2026-05-24T00:00:00.000Z",
-      "readinessScore": 64,
+      "updatedAt": "2026-06-24T00:00:00.000Z",
+      "readinessScore": 68,
       "sessionCount": 2,
-      "syllabusProgress": 78
+      "syllabusProgress": 100
     },
     {
       "topicSlug": "dsa",
       "topic": "DSA",
-      "updatedAt": "2026-05-24T00:00:00.000Z",
+      "updatedAt": "2026-06-24T00:00:00.000Z",
       "readinessScore": 0,
       "sessionCount": 1,
-      "syllabusProgress": 20
+      "syllabusProgress": 33
     },
     {
       "topicSlug": "devops",
@@ -99,10 +99,10 @@
     {
       "topicSlug": "js-ts",
       "topic": "JavaScript & TypeScript",
-      "updatedAt": "2026-06-04T00:00:00.000Z",
-      "readinessScore": 0,
-      "sessionCount": 0,
-      "syllabusProgress": 0
+      "updatedAt": "2026-06-21T00:00:00.000Z",
+      "readinessScore": 50,
+      "sessionCount": 1,
+      "syllabusProgress": 39
     },
     {
       "topicSlug": "angular",

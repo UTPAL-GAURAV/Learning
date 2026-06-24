@@ -3,9 +3,26 @@
   "topic": "JavaScript & TypeScript",
   "topicSlug": "js-ts",
   "createdAt": "2026-06-04T00:00:00.000Z",
-  "updatedAt": "2026-06-04T00:00:00.000Z",
-  "notes": "",
-  "keyConcepts": [],
+  "updatedAt": "2026-06-21T00:00:00.000Z",
+  "notes": "## Event Loop & Call Stack\n\n**What it is:** JS is single-threaded. Call stack executes code (LIFO). Event loop decides what runs next when stack is empty.\n\n**The queues:**\n- **Call stack** — runs synchronous code, one frame at a time\n- **Microtask queue** — Promise.then/catch/finally, await, queueMicrotask, MutationObserver\n- **Macrotask queue** — setTimeout, setInterval, setImmediate, I/O callbacks\n- **Rule:** When stack is empty → drain ALL microtasks first → then ONE macrotask → microtasks again\n\n**Execution order example:**\n```js\nconsole.log('A');\nsetTimeout(() => console.log('B'), 0);\nPromise.resolve().then(() => console.log('C'));\nconsole.log('D');\n// Output: A → D → C → B\n```\n\n**Microtask vs Macrotask — how to tell:**\n| Microtask | Macrotask |\n|-----------|----------|\n| Promise.then/catch/finally | setTimeout |\n| queueMicrotask() | setInterval |\n| MutationObserver | setImmediate (Node) |\n| await (everything after it) | I/O callbacks (fs, network) |\n\n**Rule of thumb:** Promise-related → microtask. Timer/I/O → macrotask.\n\n---\n\n**Blocking vs Non-blocking:**\n```js\n// BLOCKS everything — never yields the stack\nwhile (Date.now() < start + 5000) {}\n\n// Non-blocking — registers callback, returns immediately\nsetTimeout(() => {}, 5000);\n\n// Non-blocking — await pauses the function, frees the thread\nawait new Promise(resolve => setTimeout(resolve, 5000));\n```\n**Key insight:** The `while` loop never yields. setTimeout yields immediately.\n\n---\n\n**Why async/await over plain setTimeout:**\nsetTimeout only schedules delays. Real async work needs results for the next step:\n```js\n// Callback hell\ndb.getUser(id, (user) => {\n  db.getOrders(user.id, (orders) => {\n    res.send({ user, orders });\n  });\n});\n\n// async/await — reads like sync code\nconst user = await db.getUser(id);\nconst orders = await db.getOrders(user.id);\nres.send({ user, orders });\n```\nYou can't do `const user = await setTimeout(...)` — setTimeout doesn't return data.\n\n---\n\n**Does async/await create new threads? NO.**\n\n**Who actually does the I/O? libuv.**\nNode.js is built on libuv — a C library with its own thread pool (default 4 threads):\n```\nJS thread:  db.getUser() ──► hands off to libuv ──► JS thread is FREE\nlibuv:                    [C-level thread does actual network/disk I/O]\n                              DB responds\nlibuv:                    puts callback in event queue\nJS thread:  event loop picks it up → Promise resolves → await resumes\n```\n\n| Concept | Reality |\n|---------|--------|\n| async/await creates threads | No — still single JS thread |\n| await blocks the thread | No — pauses the function, frees the thread |\n| res.send waits for data | No — by the time it runs, all awaits already resolved |\n\n> `await` pauses the function, not the thread.\n\n---\n\n**What is a Promise?**\nObject representing a future value. States: pending → fulfilled / rejected.\n```js\nfetch('/api/user')  // returns a Promise natively\n\nnew Promise((resolve, reject) => {\n  setTimeout(() => resolve('done'), 5000);\n});\n```\n> Promise = the IOU slip. await = waiting for the IOU to be paid.\n\n**Why can't you use await without async?**\nRegular functions run to completion — they can't pause. `async` marks a function as suspendable (state machine). Without it, `await` is a syntax error.\n> `async` = \"this function can be paused.\" `await` = \"pause here.\"\n\n---\n\n**Correct mental model — 300 concurrent requests:**\n```\nThread: →req1(await)→req2(await)→...→req300(await)→IDLE\n                                                    ↓ 5 seconds later\nThread: →send(req1)→send(req2)→...→send(req300)\n```\n- Thread hits await on each request, drops it immediately, picks up the next\n- All 300 sitting at await within milliseconds\n- At 5s, callbacks fire → thread drains queue in order\n- No \"leaving\" — thread was never stuck with any of them\n\n---\n\n**Node.js vs Spring Boot threading:**\n| | Node.js | Spring Boot |\n|---|---|---|\n| Threads | 1 (event loop) | Many (thread pool ~200) |\n| Blocking call | Kills everything | Only blocks that one thread |\n| Concurrency | Via async/event loop | Via multiple threads |\n\nThat's why Node.js demands async discipline but Spring Boot doesn't.\n\n---\n\n## Closures & Lexical Scope\n\n**Lexical scope** — a function can see variables from where it was **written**, not where it's **called**. Physical location in source code determines access.\n\n```js\nfunction outer() {\n  const x = 10;\n  function inner() {\n    console.log(x); // can see x — written inside outer\n  }\n}\n// If inner() were written outside outer(), it couldn't see x\n```\nGlobal variables follow the same rule — everything written inside global scope sees them. Not a special case.\n\n---\n\n**Closure** — an inner function that uses a variable from an outer scope and **outlives** that outer scope.\n\n```js\nfunction makeCounter() {\n  let count = 0;        // outer scope\n  return function() {   // inner function outlives makeCounter\n    count++;\n    return count;\n  };\n}\nconst counter = makeCounter(); // makeCounter's stack frame gone\ncounter(); // 1 — count still alive because closure holds reference\ncounter(); // 2\n```\n`count` should be garbage collected — but isn't, because inner function holds a reference. That reference = closure.\n\n**Not just return — any way the inner function outlives outer scope:**\n```js\nfunction start() {\n  let msg = 'hello';\n  setTimeout(() => console.log(msg), 1000); // closure — no return needed\n}\n```\n\n---\n\n**Closure vs Lexical Scope:**\n| | Lexical Scope | Closure |\n|---|---|---|\n| What it is | Rule about variable visibility | Function keeping outer variables alive |\n| Question it answers | Can this function see that variable? | Why is that variable still in memory? |\n| When it applies | Always, every function | Only when inner fn outlives outer scope |\n\n> They're not opposites — closure **uses** lexical scope.\n> \"Can X see Y?\" → lexical scope. \"Why is Y still alive?\" → closure.\n\n---\n\n**The classic `var` bug in loops:**\n```js\nfor (var i = 0; i < 5; i++) {\n  btn.addEventListener('click', function() {\n    console.log('Button', i);\n  });\n}\n// Every button logs: Button 5\n```\n**Why:** `var` is function-scoped — ONE `i` in memory. All 5 handlers close over the **same `i`**. `addEventListener` registers the function for later — does NOT run it immediately. Loop finishes → `i = 5` → all handlers read 5.\n\n> Closures capture the **variable**, not the **value**. If the variable changes, all closures see the change.\n\n**Timing trap:**\n| Code | When runs? |\n|------|------------|\n| `console.log('x')` | Immediately, during loop |\n| `addEventListener('click', fn)` | Only on click |\n| `setTimeout(fn, 1000)` | After 1 second |\n\n**Fix 1 — `let`** (block-scoped, fresh `i` per iteration):\n```js\nfor (let i = 0; i < 5; i++) {\n  btn.addEventListener('click', () => console.log('Button', i));\n}\n```\n\n**Fix 2 — IIFE** (captures `i` by value in a new scope):\n```js\nfor (var i = 0; i < 5; i++) {\n  (function(j) {\n    btn.addEventListener('click', () => console.log('Button', j));\n  })(i);\n}\n```\n\n> `var` = one variable shared. `let` = fresh variable per iteration. Closures capture the variable, not the value.\n\n---\n\n## var/let/const & Hoisting\n\n**Hoisting** — before code runs, JS scans and moves declarations to the top of their scope. The variable exists before the line where you wrote it — but the value may not.\n\n**Three different behaviors:**\n\n`var` — hoisted AND initialized to `undefined`:\n```js\nconsole.log(x); // undefined — no error\nvar x = 5;\n// JS internally sees: var x = undefined; ... x = 5;\n```\n\n`let` / `const` — hoisted but NOT initialized (Temporal Dead Zone):\n```js\nconsole.log(y); // ReferenceError: Cannot access 'y' before initialization\nlet y = 5;\n```\n\n`const` — same as let + must assign immediately + can't reassign:\n```js\nconst z;     // SyntaxError — must initialize\nconst z = 5;\nz = 10;      // TypeError — can't reassign\n```\n\n`function declaration` — fully hoisted (declaration AND body):\n```js\ngreet(); // works — fully hoisted\nfunction greet() { console.log('hello'); }\n```\n\n`function expression` (var) — only variable hoisted, not the function:\n```js\ngreet(); // TypeError: greet is not a function\nvar greet = function() { console.log('hello'); };\n// JS sees: var greet = undefined; greet(); <-- calling undefined\n```\n\n---\n\n**Summary table:**\n| | Scope | Hoisted | Initialized | Reassignable |\n|---|---|---|---|---|\n| `var` | Function | Yes | `undefined` | Yes |\n| `let` | Block | Yes | TDZ (error) | Yes |\n| `const` | Block | Yes | TDZ (error) | No |\n| `function` | Function | Yes | Fully | Yes |\n\n---\n\n**Temporal Dead Zone (TDZ):**\nStarts when the block is entered, ends at the declaration line. Variable is hoisted (JS knows it exists) but untouchable.\n```js\n{                      // TDZ for y starts here\n  console.log(y);      // ReferenceError — in TDZ\n  let y = 5;           // TDZ ends here\n  console.log(y);      // 5\n}\n```\n> TDZ: variable exists in memory but is untouchable. Starts at block entry, ends at declaration line.\n\n---\n\n**`var` scope trap — leaks out of blocks, not functions:**\n```js\nfunction handleOrder() {\n  if (isExpress) {\n    var processOrder = function() {}; // scoped to handleOrder, not the if\n  }\n  processOrder(); // accessible — var leaked out of if block\n                  // but if isExpress=false: undefined() → TypeError\n}\nprocessOrder(); // ReferenceError — outside the function\n```\n> `var` ignores `{}` blocks. Only function boundaries stop it.\n\n---\n\n## Prototypal Inheritance & Prototype Chain\n\n**What it is:** JS objects inherit from other objects via a hidden `[[Prototype]]` link. When you access a property, JS walks up the chain until it finds it or hits `null`.\n\n**Chain lookup:**\n```js\nconst animal = { speak() { console.log('...'); } };\nconst dog = Object.create(animal); // dog.[[Prototype]] = animal\ndog.name = 'Rex';\ndog.speak(); // not on dog → check animal → found\n```\n\n**Constructor functions:**\n```js\nfunction Person(name) {\n  this.name = name;  // own property — unique per instance\n}\nPerson.prototype.greet = function() {\n  console.log('Hi, I am', this.name); // shared — one copy for all instances\n};\n\nconst p1 = new Person('Utpal');\nconst p2 = new Person('Alice');\np1.greet === p2.greet; // true — same function via prototype\n```\n\n**`new` does 4 things:**\n1. Creates a new empty object `{}`\n2. Sets its `[[Prototype]]` to `Person.prototype`\n3. Runs constructor with `this` = new object\n4. Returns the new object\n\n**JS vs Java — property declaration:**\n| | Java | JavaScript |\n|---|---|---|\n| Object shape | Fixed — declared in class | Dynamic — add properties anytime |\n| Field declaration | Required | Not needed |\n| `this.name = x` | Assigns to pre-declared field | Creates the property on the object |\n\nIn JS, `this.name = name` inside a constructor creates the property on the spot — no pre-declaration needed. Objects are dynamic dictionaries.\n\n**`Person.prototype.greet` vs `Person.greet`:**\n```js\nPerson.greet = function() {}         // static — on the function object itself\nPerson.prototype.greet = function(){}// instance — inherited by all instances\n\nPerson.greet();   // static call\np1.greet();       // instance call — found via prototype chain\n```\nJava equivalent: `Person.greet` = static method, `Person.prototype.greet` = instance method.\n\n**The memory problem — methods in constructor:**\n```js\n// BAD — 10,000 users = 10,000 copies of getFullName\nfunction User(first, last) {\n  this.getFullName = function() { return first + ' ' + last; };\n}\n\n// GOOD — one copy shared via prototype\nfunction User(first, last) {\n  this.first = first;\n  this.last = last;\n}\nUser.prototype.getFullName = function() {\n  return this.first + ' ' + this.last;\n};\n```\n\n> Own properties (data unique per instance) → in constructor via `this`\n> Methods (same logic for all) → on prototype\n\n**`class` is just sugar — identical prototype chain underneath:**\n```js\nclass Person {\n  constructor(name) { this.name = name; }\n  greet() { console.log('Hi', this.name); } // goes on Person.prototype automatically\n}\n```\n\n**`this` in prototype methods:** Determined by who calls it. `p33.getFullName()` → `this = p33` → uses `p33.first`, `p33.last`.\n\n---\n\n## this Binding — call, apply, bind\n\n**Core rule:** `this` is determined at **call time**, not definition time. It's the object that calls the function.\n\n**4 rules:**\n\n**1. Implicit binding** — object before the dot:\n```js\nconst user = { name: 'Utpal', greet() { console.log(this.name); } };\nuser.greet(); // this = user → \"Utpal\"\n```\n\n**2. Explicit binding** — call/apply/bind:\n```js\nfunction greet() { console.log(this.name); }\ngreet.call({ name: 'Utpal' });           // immediate, args comma-separated\ngreet.apply({ name: 'Utpal' }, []);      // immediate, args as array\nconst bound = greet.bind({ name: 'Bob' }); // returns new fn, call later\nbound();\n\n// apply use case: args already in array\nMath.max.apply(null, [1, 5, 3]); // = Math.max(1, 5, 3)\n```\n\n| | Calls immediately? | Args format |\n|---|---|---|\n| `call` | Yes | comma-separated |\n| `apply` | Yes | array |\n| `bind` | No — returns new fn | comma-separated |\n\n**3. `new` binding** — this = new object:\n```js\nfunction Person(name) { this.name = name; }\nconst p = new Person('Utpal'); // this = newly created object\n```\n\n**4. Default binding** — no object, no new:\n```js\ngreet(); // this = window (browser) or undefined (strict mode)\n```\n\n**Arrow functions — no own `this`, inherits from lexical scope:**\n```js\n// WRONG — arrow as method\nconst user = {\n  name: 'Utpal',\n  greet: () => console.log(this.name) // this = outer scope (not user) → undefined\n};\n\n// CORRECT — arrow inside a method (inherits this from the method)\nconst user = {\n  name: 'Utpal',\n  greet() {                      // regular fn — this = user\n    const inner = () => console.log(this.name); // inherits this from greet\n    inner(); // \"Utpal\"\n  }\n};\n```\n> Rule: methods on objects → regular function. Callbacks inside methods → arrow function.\n\n**Classic trap — setInterval/setTimeout loses `this`:**\n```js\nclass Timer {\n  constructor() { this.seconds = 0; }\n  start() {\n    setInterval(function() {\n      this.seconds++; // this = window (default binding) → NaN\n    }, 1000);\n  }\n}\n\n// Fix 1 — arrow function (inherits this from start())\nstart() {\n  setInterval(() => {\n    this.seconds++; // this = Timer instance ✓\n  }, 1000);\n}\n\n// Fix 2 — capture this (pre-ES6 pattern)\nstart() {\n  const self = this;\n  setInterval(function() {\n    self.seconds++; // closed over — always Timer instance\n  }, 1000);\n}\n```\n> Regular function inside setTimeout/setInterval loses `this`. Arrow function captures it from the enclosing method.\n\n---\n\n## Promises, async/await & Microtask Queue\n\n**Promise combinators:**\n\n| | Behavior | Use when |\n|---|---|---|\n| `Promise.all` | Fails fast if ANY rejects. Returns values directly. | All must succeed to proceed |\n| `Promise.allSettled` | Waits for ALL. Returns `{status, value/reason}` per item. | Partial success is useful (e.g. independent dashboard widgets) |\n| `Promise.race` | Resolves/rejects with whichever settles first. | Timeout pattern |\n\n```js\n// Promise.all — parallel, fail fast\nconst [user, orders] = await Promise.all([getUser(), getOrders()]);\n\n// Promise.allSettled — parallel, partial results\nconst results = await Promise.allSettled([getUser(), getOrders()]);\n// [{status: 'fulfilled', value: ...}, {status: 'rejected', reason: ...}]\n\n// Promise.race — timeout pattern\nconst result = await Promise.race([fetchFromDB(), timeoutAfter(3000)]);\n```\n\n**Error handling:**\n```js\n// .catch() on a Promise\ngetUser().catch(err => console.error(err));\n\n// try/catch with async/await\nasync function load() {\n  try {\n    const user = await getUser();\n  } catch (err) {\n    console.error(err);\n  }\n}\n\n// Silent failure — no catch = unhandled rejection in production\ngetUser(); // no await, no .catch() → failure swallowed silently\n```\n\n**Sequential vs parallel — the most common interview gotcha:**\n```js\n// SLOW — 900ms total (each waits for previous)\nconst profile = await getUserProfile();   // 300ms\nconst settings = await getUserSettings(); // 300ms after\nconst notif = await getNotifications();   // 300ms after\n\n// FAST — 300ms total (all run at same time)\nconst [profile, settings, notif] = await Promise.all([\n  getUserProfile(),\n  getUserSettings(),\n  getNotifications()\n]);\n```\n> Use sequential awaits only when call B **depends on the result** of call A. Otherwise always parallelize with Promise.all.\n\n---\n\n## Module System — ES Modules vs CommonJS\n\n**CommonJS (CJS)** — Node.js default, older:\n```js\nmodule.exports = { greet, add };\nconst { greet } = require('./utils');\n```\n\n**ES Modules (ESM)** — browser standard, modern Node.js:\n```js\nexport function greet() {}\nexport default class User {}\nimport { greet } from './utils.js';\nimport User from './utils.js';       // default import — name is your choice\nimport * as utils from './utils.js'; // namespace import\n```\n\n**Key differences:**\n| | CommonJS | ES Modules |\n|---|---|---|\n| Syntax | require / module.exports | import / export |\n| Loading | Synchronous — blocks | Asynchronous — non-blocking |\n| When resolved | Runtime | Parse time (static) |\n| Tree shaking | No | Yes |\n| Top-level `this` | module.exports | undefined |\n\n**Why ESM is better:**\n- Static analysis at parse time → bundlers can tree-shake (remove unused exports)\n- Browser native — no bundler needed for basic use\n- Standard — future of JS modules\n\n**CJS `require` is dynamic — can't tree shake:**\n```js\nconst mod = require(condition ? './a' : './b'); // decided at runtime\n```\n\n**Dual package — supporting both CJS and ESM:**\n```json\n{\n  \"exports\": {\n    \".\": {\n      \"import\": \"./dist/index.mjs\",\n      \"require\": \"./dist/index.cjs\"\n    }\n  }\n}\n```\nShip two build outputs. Node.js picks the right one automatically. Build tools (tsup, rollup) generate both from one source.\n\n**Gotcha:** You can't `require()` an ESM-only package from CJS. This is why `chalk` v5, `node-fetch` v3 broke CJS projects when they went ESM-only.\n\n> Interview one-liner: \"ESM is the standard. For libraries, ship dual CJS+ESM via the `exports` field in package.json.\"",
+  "keyConcepts": [
+    "Lexical scope — visibility determined by where function is written, not where called",
+    "Closure — inner function keeps outer variables alive even after outer scope is gone",
+    "Closures capture the variable, not the value",
+    "var is function-scoped — one variable shared across all loop iterations",
+    "let is block-scoped — fresh variable per iteration",
+    "addEventListener registers a function for later — does NOT run it immediately",
+    "Call stack — LIFO, runs synchronous code",
+    "Microtask queue — Promise callbacks, await continuations — drained fully before any macrotask",
+    "Macrotask queue — setTimeout, I/O — one per event loop tick",
+    "Event loop — stack empty → drain microtasks → one macrotask → repeat",
+    "libuv — C library under Node.js with thread pool for actual I/O",
+    "await — pauses the function, frees the JS thread",
+    "async — marks function as suspendable (state machine)",
+    "Promise — object representing a future value (pending/fulfilled/rejected)",
+    "Blocking — while loop holds stack, event loop stuck",
+    "Non-blocking — yields stack immediately, event loop free"
+  ],
   "readinessScore": 0,
   "syllabusTopics": [
     "Event loop & call stack",
@@ -27,8 +44,187 @@
     "Functional programming (pure functions, immutability, higher-order functions)",
     "Performance patterns (debounce, throttle, memoization, lazy loading)"
   ],
-  "coveredTopics": [],
+  "coveredTopics": [
+    "Event loop & call stack",
+    "Closures & lexical scope",
+    "var/let/const & hoisting",
+    "Prototypal inheritance & prototype chain",
+    "this binding (call, apply, bind)",
+    "Promises, async/await & microtask queue",
+    "Module system (ES modules vs CommonJS)"
+  ],
   "pendingTopics": [],
-  "qa": [],
-  "sessionCount": 0
+  "qa": [
+    {
+      "id": "q-jsts-1750464000001",
+      "question": "Your Node.js API handler has a `while(Date.now() < start + 5000)` loop before res.send(). The service handles 500 req/sec. What happens to those requests and why?",
+      "answer": "All incoming requests are blocked for 5 seconds. The while loop holds the call stack — the event loop can't pick up anything. Node.js is single-threaded, so no other request handler runs until the loop finishes. Fix: use async I/O (await setTimeout or actual async DB calls) to yield the stack so the event loop can process other requests.",
+      "difficulty": "medium",
+      "tags": ["event-loop", "blocking", "nodejs"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-jsts-1750464000002",
+      "question": "What's the output order? `console.log('A'); setTimeout(() => console.log('B'), 0); Promise.resolve().then(() => console.log('C')); console.log('D');`",
+      "answer": "A → D → C → B. A and D run synchronously. C is a microtask (Promise) — microtasks drain before any macrotask. B is a macrotask (setTimeout) — runs last.",
+      "difficulty": "medium",
+      "tags": ["event-loop", "microtask", "macrotask"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-jsts-1750464000003",
+      "question": "You write `async function handler() { const user = await db.getUser(id); res.send(user); }`. Does this create a new thread? Who actually fetches from the DB?",
+      "answer": "No new thread. libuv (C library under Node.js) has a thread pool that does actual I/O. The JS thread hands the operation to libuv and is immediately free. When DB responds, libuv puts the callback in the event queue. The event loop picks it up, Promise resolves, await resumes the function, and res.send runs.",
+      "difficulty": "hard",
+      "tags": ["async-await", "libuv", "nodejs", "threads"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-jsts-1750464000004",
+      "question": "500 concurrent requests all hit `await db.getUser()` at the same time. Walk me through what the Node.js thread is doing.",
+      "answer": "Thread hits await on req1, drops it (stack free), picks up req2, hits await, drops it, ... all 500 reach await within milliseconds. Thread goes idle. As DB responses arrive, libuv puts callbacks in the event queue. Thread drains the queue: res.send for req1, req2, etc. Thread was never stuck — it was never sitting idle waiting for any single request.",
+      "difficulty": "hard",
+      "tags": ["async-await", "event-loop", "concurrency"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-jsts-1750464000005",
+      "question": "This loop attaches click handlers: `for (var i = 0; i < 5; i++) { btn[i].addEventListener('click', () => console.log(i)); }`. Every button logs 5. Why, and two fixes?",
+      "answer": "var is function-scoped — one shared i across all iterations. addEventListener registers the function for later, not immediately. By click time, loop has finished and i=5. All 5 closures reference the same i. Fix 1: use let (block-scoped, fresh i per iteration). Fix 2: IIFE — wrap in (function(j){...})(i) to capture i by value in a new scope.",
+      "difficulty": "medium",
+      "tags": ["closures", "var", "let", "event-listeners"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-jsts-1750464000007",
+      "question": "A teammate writes `var processOrder = function(){...}` inside an `if` block and calls it outside. It works when the condition is true but crashes with TypeError when false. What's happening and how do you fix it?",
+      "answer": "var is function-scoped — it hoists to the top of the containing function as undefined, ignoring the if block. When condition is false, processOrder is never assigned, so calling undefined() throws TypeError. Fix: use const + ternary to handle both branches, or move the call inside the if block with const declaration.",
+      "difficulty": "medium",
+      "tags": ["hoisting", "var", "function-scope"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-jsts-1750464000008",
+      "question": "What's the difference between accessing a `var` before its declaration vs accessing a `let` before its declaration?",
+      "answer": "var: returns undefined — it's hoisted and initialized to undefined. let: throws ReferenceError — it's hoisted but sits in the Temporal Dead Zone (TDZ) until the declaration line. TDZ starts at block entry, ends at the let/const declaration.",
+      "difficulty": "easy",
+      "tags": ["hoisting", "var", "let", "tdz"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-jsts-1750464000009",
+      "question": "Why does calling a function declaration before it's defined work, but calling a function expression (var fn = function(){}) before it's defined throws TypeError — not ReferenceError?",
+      "answer": "Function declarations are fully hoisted — both the variable and the function body. Function expressions with var: only the variable is hoisted (as undefined), not the assignment. So calling it before the assignment means calling undefined(), which is TypeError (not a function), not ReferenceError (variable doesn't exist).",
+      "difficulty": "hard",
+      "tags": ["hoisting", "function-declaration", "function-expression"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-jsts-1750464000010",
+      "question": "You have 10,000 User objects. A teammate defines getFullName() inside the constructor. What's the problem and how do you fix it?",
+      "answer": "Every new User() creates a brand new copy of getFullName — 10,000 copies of identical function in memory. Fix: move it to User.prototype.getFullName. One shared copy, all instances find it via prototype chain. Rule: own data (unique per instance) → this in constructor. Methods (same logic for all) → on prototype.",
+      "difficulty": "medium",
+      "tags": ["prototype", "memory", "constructor"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-jsts-1750464000011",
+      "question": "What's the difference between Person.greet = fn and Person.prototype.greet = fn?",
+      "answer": "Person.greet = fn is a static method — sits on the function object itself, called as Person.greet(). Person.prototype.greet = fn is an instance method — inherited by all instances via prototype chain, called as p1.greet(). Java equivalent: static method vs instance method.",
+      "difficulty": "easy",
+      "tags": ["prototype", "static", "instance"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-jsts-1750464000012",
+      "question": "A teammate says 'JS class inheritance is completely different from prototype-based inheritance.' Are they right?",
+      "answer": "No. class is syntactic sugar over prototype chains. Methods defined in a class body are placed on ClassName.prototype automatically. The underlying mechanism — [[Prototype]] links, chain lookup, new doing 4 steps — is identical. class just makes it look like Java.",
+      "difficulty": "medium",
+      "tags": ["prototype", "class", "inheritance"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-jsts-1750464000017",
+      "question": "You're publishing a Node.js utility library. How do you make it work for both CJS (require) and ESM (import) consumers?",
+      "answer": "Use the exports field in package.json with import and require conditions pointing to separate build outputs (e.g. dist/index.mjs for ESM, dist/index.cjs for CJS). Build tools like tsup or rollup generate both from one source. Node.js picks the right one automatically based on how the consumer imports it.",
+      "difficulty": "medium",
+      "tags": ["modules", "esm", "commonjs", "dual-package"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-jsts-1750464000018",
+      "question": "Why does ESM support tree shaking but CommonJS doesn't?",
+      "answer": "ESM imports are static — resolved at parse time before code runs. Bundlers can analyze exactly what's used at build time and eliminate the rest. CJS require() is dynamic — the path can be computed at runtime (e.g. require(condition ? 'a' : 'b')). Bundlers can't know what's unused, so nothing gets eliminated.",
+      "difficulty": "hard",
+      "tags": ["modules", "esm", "tree-shaking"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-jsts-1750464000015",
+      "question": "You need to fetch getUserProfile(), getUserSettings(), getUserNotifications() — all independent. Teammate uses three sequential awaits. What's wrong and what's the fix?",
+      "answer": "Sequential awaits run one at a time — 300ms * 3 = 900ms total. Since calls are independent, use Promise.all: const [profile, settings, notif] = await Promise.all([...]). All three run in parallel — 300ms total. Use sequential only when call B depends on call A's result.",
+      "difficulty": "medium",
+      "tags": ["promises", "parallel", "performance"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-jsts-1750464000016",
+      "question": "When do you use Promise.all vs Promise.allSettled?",
+      "answer": "Promise.all: all calls must succeed to proceed — fails fast if any rejects, returns values directly. Use for page data where partial load is useless. Promise.allSettled: partial success is acceptable — waits for all, returns {status, value/reason} per item. Use for independent dashboard widgets where you want to show whatever succeeded.",
+      "difficulty": "medium",
+      "tags": ["promises", "promise-all", "promise-allsettled"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-jsts-1750464000013",
+      "question": "Your Timer class has setInterval with a regular function inside start(). this.seconds logs NaN. Why and how do you fix it?",
+      "answer": "setInterval calls the callback as a plain function — no object before the dot, no new. Default binding applies: this = window (or undefined in strict mode). this.seconds++ on window = NaN. Fix 1 (modern): use arrow function — it inherits this from start() which is the Timer instance. Fix 2 (legacy): capture const self = this before setInterval and use self inside.",
+      "difficulty": "hard",
+      "tags": ["this-binding", "arrow-function", "setinterval"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    },
+    {
+      "id": "q-jsts-1750464000014",
+      "question": "What's the difference between call, apply, and bind? When would you use each?",
+      "answer": "call: invokes immediately, args comma-separated. apply: invokes immediately, args as array (use when args are already in an array, e.g. Math.max.apply(null, arr)). bind: returns a NEW function with this permanently fixed, call it later. Use bind when passing a method as a callback and need to preserve this.",
+      "difficulty": "medium",
+      "tags": ["this-binding", "call", "apply", "bind"],
+      "attempts": [],
+      "wrongCount": 0,
+      "lastReviewed": null
+    }
+  ],
+  "sessionCount": 1
 }
